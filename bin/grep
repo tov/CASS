@@ -16,6 +16,34 @@ search_for () {
             sed 's@/.*@@' |
             sort |
             uniq
+    fi |
+
+    if [ -z "$flag_q" ]; then
+        while read netid; do
+            printf '%-7s ' $netid
+            "$COURSE_BIN/student_info" $netid
+        done
+    else
+        cat
+    fi |
+
+    if [ -n "$flag_1" ]; then
+        local first second
+
+        if ! read first; then
+            printf>&2 'No match for ‘%s’.\n' "$patt"
+            return 1
+        elif read second; then
+            printf>&2 'No unique match for ‘%s’. Candidates:\n' "$patt"
+            printf>&2 '  %s\n' "$first"
+            printf>&2 '  %s\n' "$second"
+            sed>&2 's/^/  /'
+            return 1
+        else
+            printf '%s\n' "$first"
+        fi
+    else
+        cat
     fi
 }
 
