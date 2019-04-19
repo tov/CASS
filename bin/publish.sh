@@ -12,7 +12,7 @@ if [ -d "$src" ]; then
         do
             mkdir -p "$dst/$(dirname "$filename")"
             make -C "$src" "$filename"
-            cp -a "$src/$filename" "$dst/$(dirname "$filename")"
+            cp -RL "$src/$filename" "$dst/$(dirname "$filename")"
         done
     fi
 

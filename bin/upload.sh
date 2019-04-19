@@ -8,6 +8,6 @@ src=web
 dst=/tmp/upload
 
 rm -Rf $dst
-"$COURSE_BIN"/publish.sh $src $dst
-rsync -avz --delete --chmod=a+rX $dst/ $web_host:$web_path
+"$COURSE_BIN"/publish.sh $src $dst &&
+    rsync -avz --delete --chmod=a+rX $dst/ $web_host:$web_path
 rm -Rf $dst
