@@ -1,0 +1,11 @@
+#!/bin/sh
+
+. "$(dirname "$0")/../lib/common.sh"
+
+eval "$(getargs netid)"
+
+prefix="$COURSE_DB/students/$netid"
+printf '%s %s <%s>\n' \
+    "$(cat "$prefix"*/first)" \
+    "$(cat "$prefix"*/last)" \
+    "$(cat "$prefix"*/email)"

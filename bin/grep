@@ -1,0 +1,24 @@
+#!/bin/sh
+
+. "$(dirname "$0")/../lib/common.sh"
+
+eval "$(getargs -q1)"
+
+cd "$COURSE_DB/students"
+
+search_for () {
+    eval "$(getargs + patt)"
+
+    if netid=$(resolve_student "$patt" 2>/dev/null); then
+        echo $netid
+    else
+        egrep -il "$arg" */* |
+            sed 's@/.*@@' |
+            sort |
+            uniq
+    fi
+}
+
+for arg; do
+    search_for "$arg"
+done
