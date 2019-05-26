@@ -2,25 +2,61 @@
 
 . "$(dirname "$0")/../lib/common.sh"
 
-eval "$(getargs src dst)"
+eval "$(getargs -v src dst)"
 
-if [ -d "$src" ]; then
+log () {
+    test -z "$flag_v" && return
+    printf "$@" >&2
+    echo >&2
+}
+
+make_q () {
+    eval "$(getargs + dir target)"
+    make -C "$dir" "$target" |
+        grep -v '^make: \(Nothing to be done for .*\|.* is up to date\)\.'
+}
+
+eval_publish () {
+    eval "$(getargs + dir)"
+
+    cat "$dir/Publish"                  |
+        sed '/^[[:space:]]*#/d;
+             /^[[:space:]]*$/d;
+             s/^/ls -d /'               |
+            (cd "$dir"; sh)             |
+            sort                        |
+            uniq
+}
+
+publish_dir () (
+    eval "$(getargs src dst ...)"
+    indent="$*"
+
+    log "${indent}Publishing: ‘%s’ to ‘%s’" "$src" "$dst"
+
     if [ -f "$src"/Publish ]; then
-        make -C "$src" Publish
-        grep -v '^\s*#' "$src"/Publish | sed 's/^/ls -d /' | (cd "$src"; sh) |
-            sort | uniq | while read filename;
+        make_q "$src" Publish
+
+        log "${indent}Evaluating: $src/Publish"
+        eval_publish "$src" | while read entry
         do
-            mkdir -p "$dst/$(dirname "$filename")"
-            make -C "$src" "$filename"
-            cp -RL "$src/$filename" "$dst/$(dirname "$filename")"
+            log "${indent} - Copying: ‘%s’" "$src/$entry"
+            mkdir -p "$dst/$(dirname "$entry")"
+            make_q "$src" "$entry"
+            cp -RL "$src/$entry" "$dst/$(dirname "$entry")"
         done
     fi
 
-    ls -a "$src" | grep -v '^[.]*$' | while read filename; do
-        if [ -d "$src/$filename" ]; then
-            "$0" "$src/$filename" "$dst/$filename"
+    ls "$src" | while read entry
+    do
+        if [ -d "$src/$entry" ]; then
+            publish_dir "$src/$entry" "$dst/$entry" "$indent  "
         fi
     done
+)
+
+if [ -d "$src" ]; then
+    publish_dir "$src" "$dst"
 else
     echo>&2 "$(basename "$0"): Don’t know what to do with ‘$src’"
     exit 2
