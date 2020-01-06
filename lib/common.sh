@@ -184,7 +184,7 @@ team_members () {
 find_single () {
     eval "$(getargs + description ...)"
 
-    if [ -z "$1" -o -n "$2" ]; then
+    if [ $# != 1 ]; then
         printf "Cannot resolve %s\n" "$description" >&2
         printf "Candidates were: %s\n" "$*" | fmt   >&2
         exit 2
@@ -196,18 +196,78 @@ find_single () {
 find_single_matching () {
     eval "$(getargs + description pattern ...)"
 
-    local candidates
     find_single "$description" $("$@" | egrep -i "$pattern")
 }
 
-resolve_student () {
-    eval "$(getargs + pattern)"
+find_netid () {
+    eval "$(getargs + regexp)"
 
-    find_single_matching "student: $pattern" "^$pattern" \
+    find_single_matching "student: $regexp" "^$regexp" \
         "$COURSE_BIN/all_students.sh"
 }
 
-# This code seems to be dead.
+find_netids_by_info () {
+    eval "$(getargs + regexp)"
+
+    egrep -il "$regexp" "$COURSE_DB"/students/*/* |
+            sed 's@.*/students/@@;s@/.*@@' |
+            sort |
+            uniq
+}
+
+whitespace_for_find_student=$(printf '\r\n\t ')
+
+# Finds student matching "$regexp"
+find_student () {
+    eval "$(getargs + -q1 regexp)"
+
+    local netid
+    if ! netid=$(find_netid "$regexp" 2>/dev/null); then
+        netid=$(find_netids_by_info "$regexp" 2>/dev/null)
+
+        if [ -n "$flag_1" ]; then
+            case "$netid" in
+                '')
+                    printf 'No match for ‘%s’.\n' "$regexp"
+                    return 1
+                ;;
+                *[$whitespace_for_find_student]?*)
+                    printf 'No unique match for ‘%s’. Candidates:\n' "$regexp"
+                    for netid in $netid; do
+                        print_student_info -n $netid | sed 's/^/ - /'
+                    done
+                    return 2
+                ;;
+            esac
+        fi >&2
+    fi
+
+    for netid in $netid; do
+        if [ -n "$flag_q" ]; then
+            printf '%s\n' $netid
+        else
+            print_student_info -n $netid
+        fi
+    done
+}
+
+resolve_student () {
+    find_student -q1 "$@"
+}
+
+print_student_info () {
+    if [ "$1" = "-n" ]; then
+        printf '%-7s ' "$2"
+        shift
+    fi
+
+    printf '%s %s <%s>\n' \
+        "$(cat "$COURSE_DB"/students/$1/first)" \
+        "$(cat "$COURSE_DB"/students/$1/last)" \
+        "$(cat "$COURSE_DB"/students/$1/email)"
+}
+
+# This code may be dead.
 resolve_team () {
     eval "$(getargs + hw pattern)"
 

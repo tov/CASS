@@ -28,6 +28,36 @@ eval_publish () {
             uniq
 }
 
+log () {
+    test -z "$flag_v" && return
+    printf "$@" >&2
+    echo >&2
+}
+
+make_q () {
+    eval "$(getargs + dir target)"
+    make -C "$dir" "$target" |
+        grep -v '^make: \(Nothing to be done for .*\|.* is up to date\)\.'
+}
+
+filter_comments () {
+    sed '
+        /^[[:space:]]*#/d
+        /^[[:space:]]*$/d
+    ' "$@"
+}
+
+eval_publish () {
+    eval "$(getargs + dir)"
+
+    filter_comments "$dir/Publish" | (
+        cd "$dir"
+        while read line; do
+            ls -d "$line"
+        done
+    ) | sort | uniq
+}
+
 publish_dir () (
     eval "$(getargs src dst ...)"
     indent="$*"
