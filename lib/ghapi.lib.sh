@@ -62,6 +62,13 @@ ghapi_repo () {
     ghapi_curl $verb $(ghapi_uri_repo $repo) --data "$data"
 }
 
+ghapi_create_repo () {
+    eval "$(getargs + repo data...)"
+    local json
+    json=$(jq -cnM "{ name: \"$repo\", $data }")
+    ghapi_curl POST "orgs/$github_org/repos" --data "$json"
+}
+
 ghapi_branch_protection () {
     eval "$(getargs + verb repo branch data...)"
     ghapi_curl $verb $(ghapi_uri_branch_protection $repo $branch) \
