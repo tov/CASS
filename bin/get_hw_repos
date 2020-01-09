@@ -1,0 +1,59 @@
+#!/bin/sh
+
+# Helper script for cloning HW repos
+#
+#       -v         verbose
+#       -q         quiet
+#
+
+. "$(dirname "$0")/.CASS"
+course_use ghapi
+
+eval "$(getargs -vq hw)"
+
+git_dirty () {
+    git status --porcelain 2>/dev/null | grep -q '^M'
+}
+
+exec 3>&1
+exec 4>&2
+test -n "$flag_q" && exec 1>/dev/null
+test -z "$flag_v" && exec 2>/dev/null
+
+progname=$(basename "$0")
+digits=$(printf %02d "$hw")
+dir=$COURSE_VAR/hw/$digits
+
+mkdir -p "$dir"
+
+for slug in $(ghapi_list_hw_repos $hw); do
+    uri=$git_base/$slug.git
+    subdir=${slug#hw*-}
+    target=$dir/$subdir
+    short_name="submodule: $slug"
+
+    cd "$dir"
+
+    if [ -d "$subdir" ]; then
+        operation=update
+        cd "$subdir"            &&
+        git checkout develop    &&
+        git pull --all
+    else
+        operation=add
+        git submodule add --branch develop "$uri" "$subdir"
+    fi          &&
+    cd "$dir"   &&
+    if git_dirty; then
+        git commit -m "${operation}d $short_name" \
+            "$subdir" ../../.gitmodules ||
+        {
+            if [ "$operation" = add ]; then
+                rm -Rf "$subdir"
+            fi
+
+            echo>&4 "$progname: could not $operation $short_name"
+        }
+    fi
+done
+
