@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Helper script for dealing with GitHub template repos.
+
+. "$(dirname "$0")/.CASS"
+course_use ghapi
+
+eval "$(getargs repo bool)"
+
+ghapi_repo PATCH $repo "{\"is_template\":$bool}"
