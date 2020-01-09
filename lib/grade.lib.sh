@@ -109,15 +109,6 @@ expect () {
     done
 }
 
-headingf () {
-    local char; char="$1"; shift
-    local fmt;  fmt="$1";  shift
-    echo
-    printf "$fmt\n" "$@" | sed "s/./$char/g"
-    printf "$fmt\n" "$@"
-    printf "$fmt\n" "$@" | sed "s/./$char/g"
-}
-
 prepare_test () {
     local progname
     local tag

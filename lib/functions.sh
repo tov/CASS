@@ -1,4 +1,4 @@
-# Common definitions for CASS (course admin shell scripts).
+# Common definitions course admin shell scripts
 
 set -o pipefail
 
@@ -16,27 +16,14 @@ find_course_root () {
     pwd
 }
 
-COURSE_ROOT="$(find_course_root)" || exit 3
-COURSE_BIN="$COURSE_ROOT/bin"
-COURSE_LIB="$COURSE_ROOT/lib"
-COURSE_ETC="$COURSE_ROOT/etc"
-COURSE_VAR="$COURSE_ROOT/var"
-export COURSE_ROOT COURSE_BIN COURSE_LIB COURSE_ETC COURSE_VAR
-
-COURSE_DB="$COURSE_VAR/db"
-COURSE_CACHE="$COURSE_VAR/cache"
-export COURSE_DB COURSE_CACHE
-
-. "$COURSE_ETC/config.sh"
-
 course_use () {
     local each
     for each; do
-        . "$COURSE_LIB/$each.sh"
+        . "$COURSE_LIB/$each.lib.sh"
     done
 }
 
-course_load_env () {
+course_load_var () {
     local var
     local file
 
@@ -48,86 +35,96 @@ course_load_env () {
     fi
 }
 
-course_load_env CANVAS_OAUTH canvas_oauth
-course_load_env GITHUB_OAUTH github_oauth
-course_load_env CODECOV_TOKEN codecov_token
+course_init_env () {
+    COURSE_ROOT=$(find_course_root)
+    COURSE_BIN=$COURSE_ROOT/private/bin
+    COURSE_LIB=$COURSE_ROOT/private/lib
+    COURSE_ETC=$COURSE_ROOT/private/etc
+    COURSE_VAR=$COURSE_ROOT/private/var
+    export COURSE_ROOT COURSE_BIN COURSE_LIB COURSE_ETC COURSE_VAR
+    COURSE_DB="$COURSE_VAR/db"
+    export COURSE_DB
 
-# Only used by old 230.
-locate_grade () {
-    local hw="$1"
-    local netid="$2"
-    echo "$COURSE_DB/grades/$netid/$hw"
+    . "$COURSE_ETC/config.sh"
 }
 
-# Only used by old 230.
-locate_grade_dir () {
-    local netid="$1"
-    echo "$COURSE_DB/grades/$netid"
-}
+find_single () {
+    eval "$(getargs + description ...)"
 
-# Only used by 211 and old 230.
-find_team_repo () {
-    echo "$COURSE_VAR/grading/$2-hw$1"
-}
-
-contains_string () {
-    local needle="$1"
-    local haystack="$2"
-
-    echo "$haystack" | grep ".*$needle.*" >/dev/null 2>&1
-}
-
-explode_word () {
-    echo "$*" | sed 's/./& /g'
-}
-
-remove_leading_hyphen () {
-    echo "$*" | sed 's/^-//'
-}
-
-getargs () {
-    (
-    usage='Usage: eval "$(getargs [+] [-OPTS] ARGNAME... [...])"'
-
-    if [ "$1" = '+' ]; then
-        shift
-        define_var () {
-            echo "local $1; $1=$2"
-        }
-    else
-        define_var () {
-            echo "$1=$2"
-        }
+    if [ -z "$1" -o -n "$2" ]; then
+        printf "Cannot resolve %s\n" "$description" >&2
+        printf "Candidates were: %s\n" "$*" | fmt   >&2
+        exit 2
     fi
+
+    printf '%s\n' "$1"
+}
+
+getargs () (
+    usage='Usage: eval "$(getargs [+[CMD]] [-OPTS] ARGNAME... [[RESTNAME]...])"'
 
     case "$1" in
         --help|'')
             echo "$usage"
             return 0
             ;;
-        -*)
-            flags="$(remove_leading_hyphen $1)"
-            shift;
+        '+'*)
+            cmd=${1#+}; shift
+            define_var () {
+                echo "local $1; $1=$2"
+            }
+            ;;
+        *)
+            cmd=$0
+            define_var () {
+                echo "$1=$2"
+            }
             ;;
     esac
 
+    flags=
+    while expr "Z$1" : Z- >/dev/null; do
+        flags=$flags${1#-}
+        shift
+    done
+
+    ARGS=$(printf '%s' "$*" | tr a-z A-Z)
+    if [ -n "$cmd" ]; then
+        cmd_usage="Usage: $cmd${flags? -$flags} $ARGS"
+    else
+        cmd_usage="$0: bad shell call (context: -$flags $args)"
+    fi
+
+    BAIL () {
+        local i; i=$1; shift
+        local result; result=$1; shift
+        echo "${i}echo>&2 '$cmd_usage'"
+        local line
+        for line in "$@"; do
+            echo "${i}echo>&2 \"$line\""
+        done
+        echo "${i}exit $result"
+    }
+
     if [ -n "$flags" ]; then
-        for flag in $(explode_word "$flags"); do
-            define_var "flag_$flag" ''
+        define_var actual_given_flag
+        for flag in $(explode_words $flags); do
+            define_var flag_$flag
         done
         echo 'while [ -n "$1" ]; do'
+        echo '    true'
         echo '  case "$1" in'
         echo '    --) shift; break;;'
         echo '    -)  break;;'
         echo '    -*)'
-        echo '      for flag in $(explode_word $(remove_leading_hyphen $1)); do'
-        printf '        if contains_string $flag "%s"; then\n' $flags
-        echo '          eval "flag_$flag=-$flag"'
-        echo '        else'
-        printf '          echo>&2 "Usage: $0 -%s ' $flags
-        printf '%s"\n' "$*" | tr a-z A-Z
-        echo '          exit 2'
-        echo '        fi'
+        echo '      for actual_given_flag in $(explode_words ${1#-}); do'
+        echo '        case "$actual_given_flag" in'
+        for flag in $(explode_words $flags); do
+            echo "          $flag) flag_$flag=-$flag ;;"
+        done
+        echo '          *)'
+        BAIL '            ' 2 'Unknown flag: $1'
+        echo '        esac'
         echo '      done'
         echo '      shift;;'
         echo '    *)  break;;'
@@ -135,31 +132,55 @@ getargs () {
         echo 'done'
     fi
 
+    define_var missing
+    dotted=false
     for arg; do
-        if [ "$arg" = ... ]; then
-            etc='-z not-z'
-            break
-        else
-            etc='-n "$*"'
-        fi
-
-        printf '%s="$1"; shift\n' $arg
+        case "$arg" in
+            ...)
+                dotted=true
+                break
+                ;;
+            *...)
+                dotted=true
+                define_var "${arg%...}" '$*'
+                break
+                ;;
+            *)
+                define_var $arg '$1'
+                echo 'if [ $# = 0 ]; then'
+                printf '  missing="$missing %s"\n' $(echo $arg | tr a-z A-Z)
+                echo 'else'
+                echo '  shift'
+                echo 'fi'
+                ;;
+        esac
     done
 
-    printf 'if [ %s' "$etc"
-    for arg; do
-        printf ' -o -z "$%s"' $arg
-    done
-    printf ' ]; then\n'
-    printf '    echo>&2 "Usage: $0 '
-    if [ -n "$flags" ]; then
-        printf '%s%s ' - "$flags"
+    echo 'if [ -n "$missing" ]; then'
+    BAIL '  ' 3 'Missing arguments:$missing'
+    echo 'fi'
+
+    if ! $dotted; then
+        echo 'if ! [ $# = 0 ]; then'
+        BAIL '  ' 4 'Extra arguments: ${@/#/\\n • }'
+        echo 'fi'
     fi
-    printf '%s"\n' "$*" | tr a-z A-Z
-    printf '    exit 2\nfi\n'
+)
 
-    )
+### BEGIN helpers for getargs
+
+explode_words () {
+    echo "$*" | sed 's/./& /g'
 }
+
+dump_args () {
+    local i
+    for i in "$@"; do
+        printf ' • ‘%s’\n' "$i"
+    done
+}
+
+### END helpers for getargs
 
 headingf () {
     eval "$(getargs + -s char fmt ...)"
@@ -285,21 +306,6 @@ search_and_replace () {
             wq
 ........EOF
     done
-}
-
-cache_eval () {
-    local file
-    file="$COURSE_CACHE/$1"
-    shift
-
-    {
-        test -f "$file" || "$@" >"$file"
-    } &&
-    cat "$file"
-}
-
-is_cached () {
-    test -f "$COURSE_CACHE/$1"
 }
 
 show_progress () {

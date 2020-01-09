@@ -28,9 +28,27 @@ called () {
     call_me $1 || name $1
 }
 
-github () {
-    cat $COURSE_DB/students/$1/github
+canvasid () {
+    cat $COURSE_VAR/students/$1/canvasid
 }
+
+githubid () {
+    cat $COURSE_DB/students/$1/githubid
+}
+
+resolve_student () {
+    find_single "student matching $1" $(resolve_student_helper "$1")
+}
+
+resolve_student_helper () (
+    cd "$COURSE_VAR/students"
+
+    for dir in *; do
+        if cat $dir/* | tr '\n' ' ' | grep -i -q "$1"; then
+            basename "$dir"
+        fi
+    done
+)
 
 find_student_by_name () {
     eval "$(getargs + last first)"
@@ -54,4 +72,3 @@ filter_students_by_name () {
         grep -i -E "$pattern" |
         sed 's/:.*//'
 }
-
