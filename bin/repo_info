@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Helper script for getting info about GitHub repos.
+
+. "$(dirname "$0")/.CASS"
+course_use ghapi
+
+eval "$(getargs repo)"
+
+ghapi_repo GET $repo
