@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Helper script for renaming a GitHub repo.
+
+. "$(dirname "$0")/.CASS"
+course_use ghapi
+
+eval "$(getargs repo name)"
+
+ghapi_repo PATCH $repo "{\"name\":\"$name\"}"
