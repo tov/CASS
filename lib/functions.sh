@@ -90,7 +90,7 @@ getargs () (
 
     ARGS=$(printf '%s' "$*" | tr a-z A-Z)
     if [ -n "$cmd" ]; then
-        cmd_usage="Usage: $cmd${flags? -$flags} $ARGS"
+        cmd_usage="Usage: $cmd${flags+ -$flags} $ARGS"
     else
         cmd_usage="$0: bad shell call (context: -$flags $args)"
     fi
