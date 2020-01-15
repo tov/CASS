@@ -2,6 +2,8 @@
 
 # Helper script for cloning HW repos
 #
+#       -i         interactive
+#       -n         new only
 #       -v         verbose
 #       -q         quiet
 #
@@ -9,10 +11,46 @@
 . "$(dirname "$0")/.CASS"
 course_use ghapi
 
-eval "$(getargs -vq hw)"
+eval "$(getargs -invq hw)"
 
 git_dirty () {
     git status --porcelain 2>/dev/null | grep -q '^M'
+}
+
+parent_gitmodules () (
+    start=$(pwd)
+    path=.gitmodules
+
+    while [ "$(pwd)" != / ]; do
+        if [ -f .gitmodules ]; then
+            echo "$path"
+            return
+        fi
+
+        path=../$path
+        cd ..
+    done
+
+    echo >&2 "Could not find .gitmodules starting from $path"
+    exit 1
+)
+
+get_ync () {
+    local choice
+
+    while true; do
+        printf>&3 "%s [y/n/q]? " "$1"
+        read choice || exit 10
+
+        case "$choice" in
+            [Nn]*|'') return 1 ;;
+            [Yy]*) return 0 ;;
+            [Qq]*) exit ;;
+            *)
+                printf&>4 'What does ‘%s’ mean?\n' "$choice"
+                ;;
+        esac
+    done
 }
 
 exec 3>&1
@@ -30,29 +68,41 @@ for slug in $(ghapi_list_hw_repos $hw); do
     uri=$git_base/$slug.git
     subdir=${slug#hw*-}
     target=$dir/$subdir
-    short_name="submodule: $slug"
 
     cd "$dir"
 
     if [ -d "$subdir" ]; then
-        operation=update
+        if [ -n "$flag_n" ]; then
+            continue
+        fi
+        operation=Update
+    else
+        operation=Add
+    fi
+
+    description="$operation $slug"
+
+    if [ -n "$flag_i" ]; then
+        get_ync "$description" || continue
+    else
+        echo>&2 "$description..."
+    fi
+
+    if [ $operation = Update ]; then
         cd "$subdir"            &&
         git checkout develop    &&
         git pull --all
     else
-        operation=add
-        git submodule add --branch develop "$uri" "$subdir"
+        git submodule add --branch develop "$uri" "$subdir" || {
+            rm -Rf "$subdir"; false
+        }
     fi          &&
     cd "$dir"   &&
     if git_dirty; then
-        git commit -m "${operation}d $short_name" \
-            "$subdir" ../../.gitmodules ||
+        git commit -m "$description" \
+            "$subdir" "$(parent_gitmodules)" ||
         {
-            if [ "$operation" = add ]; then
-                rm -Rf "$subdir"
-            fi
-
-            echo>&4 "$progname: could not $operation $short_name"
+            echo>&4 "$progname: $description: failed"
         }
     fi
 done
