@@ -4,18 +4,6 @@
 
 eval "$(getargs -v src dst)"
 
-log () {
-    test -z "$flag_v" && return
-    printf "$@" >&2
-    echo >&2
-}
-
-make_q () {
-    eval "$(getargs + dir target)"
-    make -C "$dir" "$target" |
-        grep -v '^make: \(Nothing to be done for .*\|.* is up to date\)\.'
-}
-
 eval_publish () {
     eval "$(getargs + dir)"
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# upload.sh: uploads the EECS 211 web site.
+# upload.sh: uploads the course web site.
 #
 #  -m   upload man pages as well
 #  -W   skip uploading website; implies -m
@@ -8,7 +8,9 @@
 . "$(dirname "$0")/../lib/common.sh"
 eval "$(getargs -mW)"
 
-cd "$COURSE_ROOT"
+src=web
+dst=/tmp/upload
+man_host=batgirl.eecs.northwestern.edu
 
 assert_branch () {
     local dir
@@ -17,16 +19,16 @@ assert_branch () {
 
     eval "$(getargs dir desired)"
 
-    if ! [ -d "$dir" ]; then
+    if ! [[ -d "$dir" ]]; then
         return
     fi
 
     actual=$(cd "$dir" && git symbolic-ref HEAD) || exit 1
 
-    if [ "$actual" != "$desired" ]; then
+    if [[ "$actual" != "$desired" ]]; then
         exec >&2
         echo "$(basename $0): cannot upload from this git branch"
-        if [ "$dir" != . ]; then
+        if [[ "$dir" != . ]]; then
             echo "  in submodule: $dir"
         fi
         echo "  branch is:    $actual"
@@ -35,15 +37,13 @@ assert_branch () {
     fi
 }
 
-src=web
-dst=/tmp/upload
-man_host=batgirl.eecs.northwestern.edu
+cd "$COURSE_ROOT"
 
 assert_branch .       refs/heads/master
 assert_branch web/lab refs/heads/master
 
-if [ -n "$flag_m$flag_W" ]; then
-    if [ -z "$MAN_HOST" ]; then
+if [[ -n "$flag_m$flag_W" ]]; then
+    if [[ -z "$MAN_HOST" ]]; then
         MAN_HOST="$man_host"
         echo >&2 "\$MAN_HOST not set; using $MAN_HOST"
     fi
@@ -52,7 +52,7 @@ if [ -n "$flag_m$flag_W" ]; then
     tar cp man | ssh "$MAN_HOST" 'tar xpvC pub/share'
 fi
 
-if [ -z "$flag_W" ]; then
+if [[ -z "$flag_W" ]]; then
     rm -Rf $dst
     trap 'rm -Rf $dst' EXIT
 
