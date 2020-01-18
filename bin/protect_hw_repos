@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# Protects homework repos
+
+. "$(dirname "$0")/.CASS"
+course_use ghapi
+
+eval "$(getargs hw)"
+
+for repo in $(ghapi_list_hw_repos $hw); do
+    "$COURSE_BIN"/branch_protection $repo master on
+done

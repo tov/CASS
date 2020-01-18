@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Helper script for getting info about GitHub repos.
+
+. "$(dirname "$0")/.CASS"
+course_use ghapi
+
+ghapi_get_all_pages $(ghapi_uri_org_repos) | jq -r '.[] | .name'

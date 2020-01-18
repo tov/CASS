@@ -1,7 +1,7 @@
 #!/bin/sh
 
 . "$(dirname "$0")/../lib/common.sh"
-course_use studentlib
+course_use student
 
 eval "$(getargs hw)"
 

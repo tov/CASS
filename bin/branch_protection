@@ -1,0 +1,91 @@
+#!/bin/sh
+# vim: ts=4 :
+
+# Helper script for dealing with GitHub branch protection.
+
+. "$(dirname "$0")/.CASS"
+course_use ghapi
+
+eval "$(getargs repo branch cmd)"
+
+who="$repo ($branch)"
+
+jqlib='
+    def assert_untrue(who; $val):
+        if $val then
+            "Error: \(who): \($val)\n" | halt_error
+        else
+            .
+        end;
+'
+
+do_show () {
+    ghapi_branch_protection GET $repo $branch | jq .
+}
+
+do_off () {
+    ghapi_branch_protection DELETE $repo $branch |
+
+    jq -rM --slurp --arg who "$who" '
+        .[0]?.message? |
+        if not then
+            "unprotected: \($who)"
+        elif test("not protected") then
+            "already unprotected: \($who)"
+        else
+            "\($who): \(.)\n" | halt_error
+        end
+    '
+}
+
+do_on () {
+    jq -cnM '
+        {
+          required_status_checks: null,
+          enforce_admins: false,
+          required_pull_request_reviews: {
+            dismissal_restrictions: {
+              users: [],
+              teams: [
+                "instructors"
+              ]
+            },
+            dismiss_stale_reviews: false,
+            require_code_owner_reviews: true,
+            required_approving_review_count: 1
+          },
+          restrictions: null
+        }
+    ' |
+
+    ghapi_branch_protection PUT $repo $branch "$(cat)" |
+
+    jq -rM --arg who "$who" "$jqlib"'
+        assert_untrue($who; .message?) |
+        .url |
+        capture("
+            (?<repo>     [^/]*      )
+                         /branches/
+            (?<branch>   [^/]*      )
+        "; "x") |
+        "protected: \(.repo) (\(.branch))"
+    '
+}
+
+
+case "$cmd" in
+    show)
+        do_show
+        ;;
+    off)
+        do_off
+        ;;
+    on)
+        do_on
+        ;;
+    *)
+        echo >&2 "$0: Unknown command: $cmd"
+        echo >&2 "Known commands: on off show"
+        exit 1
+        ;;
+esac

@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# Script for releasing starter branch of hwN-dev repo as master branch
+# of hwN-starter repo.
+#
+# Example: release_hw 3
+#
+# Options:
+#
+#  -c   create the remote repo first
+#
+
+. "$(dirname "$0")/.CASS"
+course_use hw
+course_use ghapi
+
+eval "$(getargs -c hw)"
+
+local_dir=$(find_local_repo $hw)
+cd "$local_dir"
+
+remote_name=$(remote_starter_repo_name $hw)
+remote_url=$(remote_starter_repo_url $hw)
+
+if [ -n "$flag_c" ]; then
+    ghapi_create_repo $remote_name "
+        description: \"Homework $hw\",
+        private: true,
+        is_template: true,
+    "
+else
+    "$COURSE_BIN/branch_protection" $remote_name master off || true
+fi
+
+starter=$(git commit-tree 'master^{tree}' -m "Starter code for hw$hw.")
+git push $remote_url +$starter:refs/heads/master
+
+"$COURSE_BIN/branch_protection" $remote_name master on
