@@ -4,9 +4,10 @@
 #
 #  -m   upload man pages as well
 #  -W   skip uploading website; implies -m
+#  -v   verbose
 
 . "$(dirname "$0")/.CASS"
-eval "$(getargs -mW)"
+eval "$(getargs -mWv)"
 
 src=web
 dst=/tmp/upload
@@ -56,6 +57,8 @@ if [[ -z "$flag_W" ]]; then
     rm -Rf $dst
     trap 'rm -Rf $dst' EXIT
 
-    "$COURSE_BIN"/publish.sh $src $dst &&
+    "$COURSE_BIN"/publish.sh $flag_v $src $dst &&
         rsync -avz --delete --chmod=a+rX $dst/ $web_host:$web_path
+exit
+
 fi
