@@ -29,8 +29,12 @@ line_count () {
     wc -l < "$1" | tr -d ' '
 }
 
+format_homework () {
+    printf "hw%02d\n" "$1"
+}
+
 find_team_repo () {
-    printf "%s/grading/%s-hw%02d" "$COURSE_VAR" "$2" "$1"
+    echo "$COURSE_VAR/$2-$(format_homework "$1")"
 }
 
 find_existing_file () {
@@ -45,15 +49,17 @@ find_existing_file () {
 }
 
 find_grading_script () {
+    local hw; hw=$(format_homework "$1")
     find_existing_file \
-        "$COURSE_LIB/grading/$1/grade_this" \
-        "$COURSE_LIB/grading/grade_this_$1"
+        "$COURSE_LIB/grading/$hw/grade_this" \
+        "$COURSE_LIB/grading/grade_this_$hw"
 }
 
 find_preparation_script () {
+    local hw; hw=$(format_homework "$1")
     find_existing_file \
-        "$COURSE_LIB/grading/$1/prepare_this" \
-        "$COURSE_LIB/grading/prepare_this_$1"
+        "$COURSE_LIB/grading/$hw/prepare_this" \
+        "$COURSE_LIB/grading/prepare_this_$hw"
 }
 
 sgrep () {
@@ -76,7 +82,7 @@ docker_start () {
                     --volume "$(pwd):/hw:ro" \
                     --volume "$(pwd)/build:/hw/build:rw" \
                     --workdir /hw \
-                    build \
+                    ubuntu-gcc \
                     sh -c 'sleep 600'
             ) || return 1
             trap "docker kill $hash 1>/dev/null" EXIT
@@ -91,7 +97,7 @@ docker_start () {
                     --tmpfs /tmp \
                     --volume "$(pwd):/hw:ro" \
                     --workdir /hw/build \
-                    test \
+                    ubuntu-gcc \
                     sh -c 'sleep 300'
             ) || return 1
             trap "docker kill $hash 1>/dev/null" EXIT

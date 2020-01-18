@@ -1,20 +1,7 @@
 # Common definitions course admin shell scripts
 
-set -o pipefail
-
-find_course_root () {
-    cd "$(dirname $0)"
-
-    while ! [[ -f .root ]]; do
-        if [[ "$(pwd)" = / ]]; then
-            echo >&2 Could not find course root
-            exit 3
-        fi
-        cd ..
-    done
-
-    pwd
-}
+# Exit on errors, including errors in piped subshells
+set -eo pipefail
 
 course_use () {
     local each
@@ -36,8 +23,6 @@ course_load_var () {
 }
 
 course_init_env () {
-    COURSE_ROOT=$(find_course_root)
-
     if [[ -d "$COURSE_ROOT/private" ]]; then
         COURSE_PRIVATE=$COURSE_ROOT/private
     else
@@ -55,7 +40,6 @@ course_init_env () {
     export COURSE_ETC
     export COURSE_LIB
     export COURSE_PRIVATE
-    export COURSE_ROOT
     export COURSE_VAR
 
     . "$COURSE_ETC/config.sh"
