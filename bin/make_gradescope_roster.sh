@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. "$(dirname "$0")/../lib/common.sh"
+. "$(dirname "$0")/.CASS"
 
 echo "Name,Email,NetID"
 

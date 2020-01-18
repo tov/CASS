@@ -5,7 +5,7 @@
 #  -m   upload man pages as well
 #  -W   skip uploading website; implies -m
 
-. "$(dirname "$0")/../lib/common.sh"
+. "$(dirname "$0")/.CASS"
 eval "$(getargs -mW)"
 
 src=web
