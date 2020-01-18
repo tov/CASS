@@ -1,6 +1,5 @@
 #!/bin/sh
 
-. "$(dirname "$0")/../lib/common.sh"
+. "$(dirname "$0")/.CASS"
+all_netids
 
-cd "$COURSE_DB"/students
-ls

@@ -4,9 +4,9 @@
 
 echo "Name,Email,NetID"
 
-"$COURSE_BIN/all_students.sh" | while read netid; do
-    first="$("$COURSE_BIN/student_property.sh" $netid first)"
-    last="$("$COURSE_BIN/student_property.sh" $netid last)"
-    email="$("$COURSE_BIN/student_property.sh" $netid email)"
+all_netids | while read netid; do
+    first="$(print_student_property $netid first)"
+    last="$(print_student_property $netid last)"
+    email="$(print_student_property $netid email)"
     printf '"%s, %s",%s,%s\n' "$last" "$first" "$email" "$netid"
 done

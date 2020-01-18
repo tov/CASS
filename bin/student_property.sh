@@ -1,7 +1,11 @@
 #!/bin/sh
 
-. "$(dirname "$0")/../lib/common.sh"
+. "$(dirname "$0")/.CASS"
 
-eval "$(getargs netid propname)"
+eval "$(getargs -R netid propname)"
 
-cat "$COURSE_DB"/students/$netid*/$propname
+if [[ -z "$flag_R" ]]; then
+    netid=$(resolve_student "$netid") || exit 2
+fi
+
+print_student_property "$netid" "$propname"

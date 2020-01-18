@@ -5,8 +5,8 @@ set -o pipefail
 find_course_root () {
     cd "$(dirname $0)"
 
-    while ! [ -f .root ]; do
-        if [ "$(pwd)" = / ]; then
+    while ! [[ -f .root ]]; do
+        if [[ "$(pwd)" = / ]]; then
             echo >&2 Could not find course root
             exit 3
         fi
@@ -30,20 +30,33 @@ course_load_var () {
     var="$1"
     file="$COURSE_ETC/$2"
 
-    if [ -f "$file" ]; then
+    if [[ -f "$file" ]]; then
         eval "$var=\$(cat \"$file\"); export $var"
     fi
 }
 
 course_init_env () {
     COURSE_ROOT=$(find_course_root)
-    COURSE_BIN=$COURSE_ROOT/private/bin
-    COURSE_LIB=$COURSE_ROOT/private/lib
-    COURSE_ETC=$COURSE_ROOT/private/etc
-    COURSE_VAR=$COURSE_ROOT/private/var
-    export COURSE_ROOT COURSE_BIN COURSE_LIB COURSE_ETC COURSE_VAR
+
+    if [[ -d "$COURSE_ROOT/private" ]]; then
+        COURSE_PRIVATE=$COURSE_ROOT/private
+    else
+        COURSE_PRIVATE=$COURSE_ROOT
+    fi
+
+    COURSE_BIN=$COURSE_PRIVATE/bin
+    COURSE_ETC=$COURSE_PRIVATE/etc
+    COURSE_LIB=$COURSE_PRIVATE/lib
+    COURSE_VAR=$COURSE_PRIVATE/var
     COURSE_DB="$COURSE_VAR/db"
+
+    export COURSE_BIN
     export COURSE_DB
+    export COURSE_ETC
+    export COURSE_LIB
+    export COURSE_PRIVATE
+    export COURSE_ROOT
+    export COURSE_VAR
 
     . "$COURSE_ETC/config.sh"
 }
@@ -51,7 +64,7 @@ course_init_env () {
 find_single () {
     eval "$(getargs + description ...)"
 
-    if [ -z "$1" -o -n "$2" ]; then
+    if [[ -z "$1" ]] || [[ -n "$2" ]]; then
         printf "Cannot resolve %s\n" "$description" >&2
         printf "Candidates were: %s\n" "$*" | fmt   >&2
         exit 2
@@ -89,7 +102,7 @@ getargs () (
     done
 
     ARGS=$(printf '%s' "$*" | tr a-z A-Z)
-    if [ -n "$cmd" ]; then
+    if [[ -n "$cmd" ]]; then
         cmd_usage="Usage: $cmd${flags+ -$flags} $ARGS"
     else
         cmd_usage="$0: bad shell call (context: -$flags $args)"
@@ -106,12 +119,12 @@ getargs () (
         echo "${i}exit $result"
     }
 
-    if [ -n "$flags" ]; then
+    if [[ -n "$flags" ]]; then
         define_var actual_given_flag
         for flag in $(explode_words $flags); do
             define_var flag_$flag
         done
-        echo 'while [ -n "$1" ]; do'
+        echo 'while [[ -n "$1" ]]; do'
         echo '    true'
         echo '  case "$1" in'
         echo '    --) shift; break;;'
@@ -147,7 +160,7 @@ getargs () (
                 ;;
             *)
                 define_var $arg '$1'
-                echo 'if [ $# = 0 ]; then'
+                echo 'if [[ $# = 0 ]]; then'
                 printf '  missing="$missing %s"\n' $(echo $arg | tr a-z A-Z)
                 echo 'else'
                 echo '  shift'
@@ -156,12 +169,12 @@ getargs () (
         esac
     done
 
-    echo 'if [ -n "$missing" ]; then'
+    echo 'if [[ -n "$missing" ]]; then'
     BAIL '  ' 3 'Missing arguments:$missing'
     echo 'fi'
 
     if ! $dotted; then
-        echo 'if ! [ $# = 0 ]; then'
+        echo 'if ! [[ $# = 0 ]]; then'
         BAIL '  ' 4 'Extra arguments: ${@/#/\\n • }'
         echo 'fi'
     fi
@@ -185,7 +198,7 @@ dump_args () {
 headingf () {
     eval "$(getargs + -s char fmt ...)"
 
-    if [ -n "$flag_s" ]; then
+    if [[ -n "$flag_s" ]]; then
         fmt="$char$char$char $fmt $char$char$char"
     fi
 
@@ -202,10 +215,15 @@ team_members () {
     echo "$*" | sed 's/-/ /g'
 }
 
+all_netids () {
+    cd "$COURSE_DB/students"
+    ls
+}
+
 find_single () {
     eval "$(getargs + description ...)"
 
-    if [ $# != 1 ]; then
+    if [[ $# != 1 ]]; then
         printf "Cannot resolve %s\n" "$description" >&2
         printf "Candidates were: %s\n" "$*" | fmt   >&2
         exit 2
@@ -215,22 +233,18 @@ find_single () {
 }
 
 find_single_matching () {
-    eval "$(getargs + description pattern ...)"
+    local description; description=$1; shift
+    local pattern; pattern=$1; shift
 
     find_single "$description" $("$@" | egrep -i "$pattern")
 }
 
 find_netid () {
-    eval "$(getargs + regexp)"
-
-    find_single_matching "student: $regexp" "^$regexp" \
-        "$COURSE_BIN/all_students.sh"
+    find_single_matching "student: $1" "^$1" all_netids
 }
 
 find_netids_by_info () {
-    eval "$(getargs + regexp)"
-
-    egrep -il "$regexp" "$COURSE_DB"/students/*/* |
+    egrep -il "$1" "$COURSE_DB"/students/*/* |
             sed 's@.*/students/@@;s@/.*@@' |
             sort |
             uniq
@@ -240,13 +254,35 @@ whitespace_for_find_student=$(printf '\r\n\t ')
 
 # Finds student matching "$regexp"
 find_student () {
-    eval "$(getargs + -q1 regexp)"
-
+    local arg
     local netid
+    local regexp
+
+    for arg; do
+        case "$arg" in
+            -q*)
+                flag_q=1
+                arg="-${arg#-q}"
+                ;;
+            -1*)
+                flag_1=1
+                arg="-${arg#-1}"
+                ;;
+            -|--)
+                shift
+                break
+                ;;
+            *)
+                regexp=$arg
+                break
+                ;;
+        esac
+    done
+
     if ! netid=$(find_netid "$regexp" 2>/dev/null); then
         netid=$(find_netids_by_info "$regexp" 2>/dev/null)
 
-        if [ -n "$flag_1" ]; then
+        if [[ -n "$flag_1" ]]; then
             case "$netid" in
                 '')
                     printf 'No match for ‘%s’.\n' "$regexp"
@@ -264,7 +300,7 @@ find_student () {
     fi
 
     for netid in $netid; do
-        if [ -n "$flag_q" ]; then
+        if [[ -n "$flag_q" ]]; then
             printf '%s\n' $netid
         else
             print_student_info -n $netid
@@ -276,30 +312,36 @@ resolve_student () {
     find_student -q1 "$@"
 }
 
+print_student_property () {
+    cat "$COURSE_DB"/students/$1/$2
+}
+
 print_student_info () {
-    if [ "$1" = "-n" ]; then
-        printf '%-7s ' "$2"
+    if [[ "$1" = -n ]]; then
         shift
+        printf '%-10s ' "$1"
     fi
 
     printf '%s %s <%s>\n' \
-        "$(cat "$COURSE_DB"/students/$1/first)" \
-        "$(cat "$COURSE_DB"/students/$1/last)" \
-        "$(cat "$COURSE_DB"/students/$1/email)"
+        "$(print_student_property "$1" first)" \
+        "$(print_student_property "$1" last)" \
+        "$(print_student_property "$1" email)"
 }
 
 # This code may be dead.
 resolve_team () {
-    eval "$(getargs + hw pattern)"
+    local hw; hw=$1
+    local pattern; pattern=$2
 
     find_single_matching "team: $pattern" "\\<$pattern" \
             "$COURSE_BIN/all_teams.sh" $hw
 }
 
 search_and_replace () {
-    eval "$(getargs + patt repl ...)"
-
+    local patt; patt="$1"; shift
+    local repl; repl="$1"; shift
     local file
+
     for file; do
         ex - "$file" <<........EOF
             g/$patt/s^^$repl^g
@@ -309,14 +351,14 @@ search_and_replace () {
 }
 
 show_progress () {
-    eval "$(getargs + message ...)"
+    local message; message=$1; shift
     local result
 
     printf '%s...' "$message"
     "$@" >/dev/null
     result=$?
 
-    if [ "$result" = 0 ]; then
+    if [[ "$result" = 0 ]]; then
         echo ' okay.'
     else
         echo ' FAILED.'

@@ -2,7 +2,7 @@
 
 # Reads student records from stdin and writes to var/db/students
 
-. "$(dirname "$0")/../lib/common.sh"
+. "$(dirname "$0")/.CASS"
 
 echo 'Input format: NetID Email Last Name,First Name' >&2
 
