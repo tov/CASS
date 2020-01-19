@@ -1,35 +1,68 @@
 #!/bin/sh
 
-# Protects homework repos
+# Pushes fixes to student repos.
+#
+#  -n  Dry run -- print remote actions rather than doing them.
+#  -R  Don’t create pull request.
 
 . "$(dirname "$0")/.CASS"
 course_use ghapi
+course_use hw
 
-eval "$(getargs hw)"
+eval "$(getargs -nR hw title body...)"
 
-# FIX ME:
-org_uri=https://github.com/nu-rust-course
-dev_uri=$(printf '%s/_hw%02d-dev' $org_uri $hw)
+dev_uri=$(remote_hw_dev_repo_url $hw)
+message=$(printf '%s\n\n%s' "$title" "$body")
 
-cd /tmp
+if [ -n "$flag_n" ]; then
+    G () {
+        local arg
+        printf ':-'
+        for arg; do
+            printf ' %q' "$arg"
+        done
+        printf '\n'
+    }
+else
+    G () {
+        "$@"
+    }
+fi
+
+clean_clone () {
+    cd /
+    rm -Rf $local_repo
+}
+
+unprotect () {
+    G "$COURSE_BIN"/branch_protection $repo master off
+}
+
+reprotect () {
+    G "$COURSE_BIN"/branch_protection $repo master on
+}
 
 for repo in $(ghapi_list_hw_repos $hw); do
     (
-    trap "
-        cd /;
-        rm -Rf /tmp/$repo;
-        \"$COURSE_BIN\"/branch_protection $repo master on
-    " EXIT
+    local_repo=/tmp/${repo}-fixup
 
-    git clone $org_uri/$repo
-    cd $repo
+    trap clean_clone EXIT
+    git clone $git_base/$repo $local_repo
+    cd $local_repo
 
     git remote add fixup $dev_uri
     git fetch fixup
     git checkout fixup/master -- .
-    git commit -m "Fixes pushed $(date)" || true
 
-    "$COURSE_BIN"/branch_protection $repo master off
-    git push origin master
+    if git commit -m "Fixes pushed: $message"; then
+        trap 'clean_clone ; reprotect' EXIT
+        unprotect
+        G git push origin master
+
+        if [ -z "$flag_R" ] && ref_exists origin/develop; then
+            G hub pull-request --base develop --head master \
+                    --message="$message"
+        fi
+    fi
     )
 done
