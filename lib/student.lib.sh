@@ -65,7 +65,7 @@ filter_students_by_name () {
     last=$(echo "$last" | sed 's/[^A-Za-z].*//')
     pattern=":$last.*,$first"
 
-    "$COURSE_BIN/all_students.sh" |
+    all_netids |
         while read netid; do
             echo "$netid:$(last $netid),$(first $netid)"
         done |

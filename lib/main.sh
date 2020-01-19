@@ -1,10 +1,25 @@
 # Common initialization for course admin shell scripts
 
-# Exit on errors, including errors in piped subshells
-set -eo pipefail
+find_course_root () {
+    cd "$(dirname $0)"
+
+    while ! [[ -f .root ]]; do
+        if [[ "$(pwd)" = / ]]; then
+            echo >&2 Could not find course root
+            exit 3
+        fi
+        cd ..
+    done
+
+    pwd
+}
+
+# Find and remember course root
+COURSE_ROOT=$(find_course_root)
+export COURSE_ROOT
 
 # Load helpful functions
-. "$(dirname $0)/../lib/functions.sh"
+. "$COURSE_ROOT/.CASS/lib/functions.sh"
 
 # Initialize the course environment
 course_init_env

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. "$(dirname "$0")/../lib/common.sh"
+. "$(dirname "$0")/.CASS"
 
 eval "$(getargs quiz)"
 

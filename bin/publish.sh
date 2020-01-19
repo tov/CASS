@@ -1,23 +1,11 @@
 #!/bin/sh
 
-. "$(dirname "$0")/../lib/common.sh"
+. "$(dirname "$0")/.CASS"
 
 eval "$(getargs -v src dst)"
 
-log () {
-    test -z "$flag_v" && return
-    printf "$@" >&2
-    echo >&2
-}
-
-make_q () {
-    eval "$(getargs + dir target)"
-    make -C "$dir" "$target" |
-        grep -v '^make: \(Nothing to be done for .*\|.* is up to date\)\.'
-}
-
 eval_publish () {
-    eval "$(getargs + dir)"
+    local dir; dir=$1
 
     cat "$dir/Publish"                  |
         sed '/^[[:space:]]*#/d;
@@ -35,10 +23,13 @@ log () {
 }
 
 make_q () {
-    eval "$(getargs + dir target)"
+    local dir; dir=$1; shift
+    local target; target=$1; shift
+
     make -C "$dir" "$target" |
-        grep -v '^make: \(Nothing to be done for .*\|.* is up to date\)\.'
-}
+        egrep -v '^make: (?:Nothing to be done for .*|.* is up to date)' ||
+            true
+        }
 
 filter_comments () {
     sed '
@@ -48,7 +39,7 @@ filter_comments () {
 }
 
 eval_publish () {
-    eval "$(getargs + dir)"
+    local dir; dir=$1
 
     filter_comments "$dir/Publish" | (
         cd "$dir"
@@ -59,12 +50,13 @@ eval_publish () {
 }
 
 publish_dir () (
-    eval "$(getargs src dst ...)"
+    local src; src=$1; shift
+    local dst; dst=$1; shift
     indent="$*"
 
     log "${indent}Publishing: ‘%s’ to ‘%s’" "$src" "$dst"
 
-    if [ -f "$src"/Publish ]; then
+    if [[ -f "$src"/Publish ]]; then
         make_q "$src" Publish
 
         log "${indent}Evaluating: $src/Publish"
@@ -79,13 +71,13 @@ publish_dir () (
 
     ls "$src" | while read entry
     do
-        if [ -d "$src/$entry" ]; then
+        if [[ -d "$src/$entry" ]]; then
             publish_dir "$src/$entry" "$dst/$entry" "$indent  "
         fi
     done
 )
 
-if [ -d "$src" ]; then
+if [[ -d "$src" ]]; then
     publish_dir "$src" "$dst"
 else
     echo>&2 "$(basename "$0"): Don’t know what to do with ‘$src’"
