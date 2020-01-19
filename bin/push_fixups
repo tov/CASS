@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# Protects homework repos
+
+. "$(dirname "$0")/.CASS"
+course_use ghapi
+
+eval "$(getargs hw)"
+
+# FIX ME:
+org_uri=https://github.com/nu-rust-course
+dev_uri=$(printf '%s/_hw%02d-dev' $org_uri $hw)
+
+cd /tmp
+
+for repo in $(ghapi_list_hw_repos $hw); do
+    (
+    trap "
+        cd /;
+        rm -Rf /tmp/$repo;
+        \"$COURSE_BIN\"/branch_protection $repo master on
+    " EXIT
+
+    git clone $org_uri/$repo
+    cd $repo
+
+    git remote add fixup $dev_uri
+    git fetch fixup
+    git checkout fixup/master -- .
+    git commit -m "Fixes pushed $(date)" || true
+
+    "$COURSE_BIN"/branch_protection $repo master off
+    git push origin master
+    )
+done
