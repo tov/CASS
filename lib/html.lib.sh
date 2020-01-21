@@ -98,7 +98,7 @@ html_test_result () {
 
     printf \
         '<h4 class="test-result %s"><strong>%s</strong> (%s / %s %s)</h4>\n' \
-        "$1" "$2" "$3" "$4"
+        "$1" "$2" "$3" "$4" "$unit"
 }
 
 html_test_passed () {

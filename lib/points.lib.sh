@@ -29,13 +29,6 @@ score_frac () {
 }
 
 score_if () {
-    local unit;
-    if [ "$points" = 1 ]; then
-        unit=point
-    else
-        unit=points
-    fi
-
     if "$@"; then
         html_test_passed $points
         add_to passed 1
