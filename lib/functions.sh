@@ -3,14 +3,22 @@
 # Exit on errors, including errors in piped subshells
 set -eo pipefail
 
+course_used_vars=:
+
 course_use () {
     local each
     for each; do
+        case "$course_used_vars" in
+            *:$each:*) continue ;;
+        esac
+
         if [ -f "$COURSE_LIB/$each.lib.sh" ]; then
             . "$COURSE_LIB/$each.lib.sh"
         else
             . "$course_cass/lib/$each.lib.sh"
         fi
+
+        course_used_vars=${course_used_vars}${each}:
     done
 }
 

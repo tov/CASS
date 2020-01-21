@@ -5,7 +5,8 @@
 export COURSE_GRADE_TIMEOUT COURSE_MAX_OUTPUT
 
 build_log=build.log
-tests_log=tests.hlog
+tests_log=tests.log
+tests_hlog=tests.hlog
 
 current_tag=0
 
@@ -167,8 +168,8 @@ prepare_test () {
 
     mkdir -p logs
 
-    html_test_case 'Test case %s: <code class="filename">./%s</code>' \
-        "$tag" "$command"
+    html_test_case Test case $tag: \
+        "<code class='filename'>./$command</code>"
 
     if [ -n "$message" ]; then
         html_p "$(cat "$message")"
@@ -295,7 +296,7 @@ assert_absence () {
     local hbfilename="<code class=\"filename\">$(basename "$filename")</code>"
     local pat; pat="(^|[^[:alnum:]])($funname *[(])"
 
-    html_test_case "Checking for %s in %s" "$hfunname" "$hbfilename"
+    html_test_case "Checking for $hfunname in $hbfilename"
 
     html_p "There should not be any calls to function $hfunname
     in file $hfilename, because $hfilename should not contain code that

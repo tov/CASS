@@ -1,10 +1,40 @@
 # HTML output for grading.
 
-html_tag_line () {
-    local tag; tag=$1; shift
-    local fmt; fmt=$1; shift
-    local end; end=$(echo "$tag" | sed 's/ .*//')
-    printf "<$tag>$fmt</$end>\n" "$@"
+html_escape () {
+    sed -E '
+        s@&@\&amp;@g
+        s@<@\&lt;@g
+        s@>@\&gt;@g
+        s@"@\&quot;@g
+    '
+}
+
+sed_html_unescape_prog='
+    s@&lt;@<@g
+    s@&gt;@>@g
+    s@&quot;@"@g
+    s@&amp;@\&@g
+'
+
+sed_html_untag_prog='
+    s/<[^>]*>//g
+'
+
+unhtml () {
+    sed "$@" -E "
+        $sed_html_unescape_prog
+        $sed_html_untag_prog
+    "
+}
+
+txt_only () {
+    printf '<span class="txt-only">'
+    printf '%s' "$*" | html_escape | tr -d '\n'
+    printf '</span>'
+}
+
+txt_nl () {
+    echo
 }
 
 html_p () {
@@ -36,26 +66,49 @@ html_try_close_test_case () {
 html_test_case () {
     html_try_close_test_case
     echo '<div class="test-case">'
-    html_in_test_case=true
-    html_tag_line h3 "$@"
+    txt_only '====='; txt_nl
+    txt_only '===== '
+    printf "<h3>$*</h3>\n"
+    txt_only '====='; txt_nl
     echo '<div class="test-case-body">'
+    html_in_test_case=true
+}
+
+html_tag_line () {
+    local tag; tag=$1; shift
+    local fmt; fmt=$1; shift
+    local end; end=$(echo "$tag" | sed 's/ .*//')
+    printf "<$tag>$fmt</$end>\n" "$@"
 }
 
 html_subhead () {
-    html_tag_line h4 "$@"
+    txt_only '=== '
+    printf '<h4>'
+    printf "$@" | html_escape
+    printf '</h4>\n'
 }
 
 html_test_result () {
-    html_tag_line "h4 class=\"test-result $1\"" "$2"
+    local unit;
+    if [ "$4" = 1 ]; then
+        unit=point
+    else
+        unit=points
+    fi
+
+    printf \
+        '<h4 class="test-result %s"><strong>%s</strong> (%s / %s %s)</h4>\n' \
+        "$1" "$2" "$3" "$4"
 }
 
-html_escape () {
-    sed -E '
-        s@&@\&amp;@g
-        s@<@\&lt;@g
-        s@>@\&gt;@g
-        s@"@\&quot;@g
-    '
+html_test_passed () {
+    txt_only '+++ '
+    html_test_result passed Passed "$1" "$1"
+}
+
+html_test_failed () {
+    txt_only '--- '
+    html_test_result failed Failed 0 "$1"
 }
 
 html_io_lines () {

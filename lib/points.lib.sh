@@ -37,13 +37,11 @@ score_if () {
     fi
 
     if "$@"; then
-        html_test_result passed \
-            "<strong>Passed</strong> ($points / $points $unit)"
+        html_test_passed $points
         add_to passed 1
         score_frac $points $points
     else
-        html_test_result failed \
-            "<strong>Failed</strong> (0 / $points $unit)"
+        html_test_failed $points
         add_to failed 1
         score_frac 0 $points
     fi
