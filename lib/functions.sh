@@ -57,6 +57,34 @@ find_single () {
     printf '%s\n' "$1"
 }
 
+argcheck_helper () {
+    local got; got=$(( $# - 1 ))
+    local exp; exp=0
+
+    while [ $# -gt 1 ]; do
+        shift
+    done
+    exp=$1
+
+    case $exp in
+        +*)
+            exp=${exp#+}
+            if [ $exp -gt $got ]; then
+                echo>&2 "Got only $got arguments when $exp expected."
+                return 3
+            fi
+            ;;
+        *)
+            if [ $exp != $got ]; then
+                echo>&2 "Got $got arguments when $exp expected."
+                return 2
+            fi
+            ;;
+    esac
+}
+
+alias argcheck='argcheck_helper "$@"'
+
 getargs () (
     usage='Usage: eval "$(getargs [+[CMD]] [-OPTS] ARGNAME... [[RESTNAME]...])"'
 
@@ -242,26 +270,32 @@ find_student () {
     local netid
     local regexp
 
-    for arg; do
+    arg=$1
+    while [ -n "$arg" ]; do
         case "$arg" in
+            -q)
+                flag_q=1
+                shift; arg=$1
+                ;;
+            -1)
+                flag_1=1
+                shift; arg=$1
+                ;;
             -q*)
                 flag_q=1
-                arg="-${arg#-q}"
+                arg=-${arg#-q}
                 ;;
             -1*)
                 flag_1=1
-                arg="-${arg#-1}"
-                ;;
-            -|--)
-                shift
-                break
+                arg=-${arg#-1}
                 ;;
             *)
-                regexp=$arg
                 break
                 ;;
         esac
     done
+
+    regexp=$1
 
     if ! netid=$(find_netid "$regexp" 2>/dev/null); then
         netid=$(find_netids_by_info "$regexp" 2>/dev/null)
@@ -293,7 +327,7 @@ find_student () {
 }
 
 resolve_student () {
-    find_student -q1 "$@"
+    find_student -1q "$@"
 }
 
 print_student_property () {

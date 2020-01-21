@@ -1,15 +1,15 @@
 # Library for grading based on running programs and matching output
 
-COURSE_GRADE_TIMEOUT=5
-export COURSE_GRADE_TIMEOUT
+: ${COURSE_GRADE_TIMEOUT=5}
+: ${COURSE_MAX_OUTPUT=50000}
+export COURSE_GRADE_TIMEOUT COURSE_MAX_OUTPUT
 
-COURSE_MAX_OUTPUT=50000
-export COURSE_MAX_OUTPUT
+build_log=build.log
+tests_log=tests.log
 
 tab_char=$(printf '\t')
 del_char=$(printf '\177')
-lf_char='
-'
+lf_char=$(printf '\n')
 
 bc_expr () {
     echo "$*" | bc -l
@@ -34,7 +34,7 @@ format_homework () {
 }
 
 find_team_repo () {
-    echo "$COURSE_VAR/$2-$(format_homework "$1")"
+    echo "$COURSE_VAR/grading/$2-$(format_homework "$1")"
 }
 
 find_existing_file () {
@@ -46,6 +46,14 @@ find_existing_file () {
             return
         fi
     done
+}
+
+find_homework_base () {
+    printf "%s/dev/hw/%02d\n" "$COURSE_ROOT" "$1"
+}
+
+find_homework_test_repo () {
+    printf "%s/dev/hw/test/%s-hw%02d\n" "$COURSE_ROOT" "$2" "$1"
 }
 
 find_grading_script () {
@@ -67,10 +75,10 @@ sgrep () {
 }
 
 docker_start () {
-    local kind
-    local name
+    argcheck 2
+    local kind; kind=$1; shift
+    local name; name=$1; shift
     local hash
-    eval "$(getargs kind name)"
 
     case "$kind" in
         build)
@@ -112,9 +120,7 @@ docker_start () {
 }
 
 get_current_container_var () {
-    local kind
-    eval "$(getargs kind)"
-    case "$kind" in
+    case "$1" in
         build)
             echo CURRENT_BUILD_CONTAINER
             ;;
@@ -122,18 +128,16 @@ get_current_container_var () {
             echo CURRENT_TEST_CONTAINER
             ;;
         *)
-            echo >&2 "get_current_container_var: unknown kind: $kind"
+            echo >&2 "get_current_container_var: unknown kind: $1"
             return 1
             ;;
     esac
 }
 
 get_current_container () {
-    local kind
     local hash
-    eval "$(getargs kind)"
 
-    varname="$(get_current_container_var "$kind")"
+    varname=$(get_current_container_var "$1")
     eval "hash=\$$varname"
 
     if [ -n "$hash" ]; then
@@ -157,44 +161,54 @@ docker_test () {
         docker exec --interactive $hash "$@"
 }
 
-docker_execute () {
-    local command
-    local out
-    local progname
-    local result
+label_output () (
+    set +e
 
-    eval "$(getargs command out ...)"
+    codefile=$(mktemp -t label_output_code.XXXX)
+    donefile=$(mktemp -t label_output_done.XXXX)
+    trap 'rm -f "$codefile" "$donefile"' EXIT
+
+    {
+        {
+            {
+                {
+                    "$@" 2>&1 1>&3
+                    echo $? >> "$codefile"
+                } | sed 's/^/! /' 1>&2
+            } 3>&1 | sed 's/^/> /'
+        } 2>&1
+        printf '\0' && echo 1 >> "$donefile"
+    } | head -c "$COURSE_MAX_OUTPUT"
+
+    code=$(cat "$codefile")
+    done=$(cat "$donefile")
+
+    if [ -z "$done" ] || [ -z "$code" ]; then
+        code=125
+    fi
+
+    exit $code
+)
+
+docker_execute () {
+    local command; command=$1; shift
+    local exitcode; exitcode=$1; shift
+    argcheck 0
 
     case "$command" in
         =*)
-            command="$(strip_prefix = "$command")"
+            command=${command#=}
             ;;
         *)
-            command="./$command"
+            command=./$command
             ;;
     esac
 
-    set -o pipefail
-    {
-        (
-        "$@" |
-            docker_test $command 2>&3 |
-            sed 's/^/< /'
-
-        result=$?
-        echo '#COMPLETE'
-        exit $result
-
-        ) 3>&1 1>&2 | sed 's/^/! /'
-    } 2>&1 | head -c $COURSE_MAX_OUTPUT > "$out"
-
-    result=$?
-
-    if [ $result = 124 ]; then
-        echo '#TIMEOUT' >> "$out"
+    if label_output docker_test $command; then
+        echo 0 >| "$exitcode"
+    else
+        echo $? >| "$exitcode"
     fi
-
-    return $result
 }
 
 score () {
@@ -203,8 +217,8 @@ score () {
 }
 
 score_if () {
-    local denom
-    denom="$1"; shift
+    local denom; denom="$1"; shift
+
     if "$@"; then
         echo "+++ PASSED ($denom / $denom points)"
         add_to passed 1
@@ -255,22 +269,27 @@ score_unit_test () {
 
 expect_exit () {
     local points
-    local expected_code
-    local actual_code
     local op
+    local expected_code
 
     points=1
-    eval "$(update_points "$1")"
-    eval "$(getargs -n expected_code actual_code)"
+    eval "$(update_points "$1")" || true
 
-    if [ -n "$flag_n" ]; then
-        op='!='
-    else
-        op='='
-    fi
+    argcheck 1
 
-    echo "Expecting exit code $op $expected_code, got $actual_code"
-    score_if $points [ "$actual_code" $op "$expected_code" ]
+    case "$1" in
+        \!*)
+            op='!='
+            expected_code=${1#\!}
+            ;;
+        *)
+            op='='
+            expected_code=$1
+            ;;
+    esac
+
+    echo "Expecting exit code $op $expected_code, got $last_exitcode"
+    score_if $points [ "$last_exitcode" $op "$expected_code" ]
 }
 
 strip_prefix () {
@@ -282,8 +301,7 @@ strip_prefix () {
 
     case "$param" in
         $prefix*)
-            prefix=$(printf '%s' "$prefix" | sed 's/././g')
-            printf '%s' "$param" | sed "1s/^$prefix//"
+            printf %s "${param#$prefix}"
             true
             ;;
         *)
@@ -295,7 +313,7 @@ strip_prefix () {
 update_points () {
     local points
 
-    if points="$(strip_prefix '+' "$1")"; then
+    if points="$(strip_prefix + "$1")"; then
         echo "points=$points; shift; true"
     else
         echo "false"
@@ -310,8 +328,8 @@ expect_lines () {
     local count_noun
 
     points=1
-    eval "$(update_points "$1")"
-    eval "$(getargs correct_output)"
+    eval "$(update_points "$1")" || true
+    correct_output=$1; shift
 
     actual_lines=$(line_count "$last_stdout")
     expected_lines=$(line_count "$correct_output")
@@ -353,14 +371,14 @@ expect () {
             shift
             file="$last_stderr"
             which=stderr
-        elif line="$(strip_prefix '@' "$1")"; then
+        elif line="$(strip_prefix @ "$1")"; then
             shift
             pattern="$1"; shift
             sed "$line!d" "$file" > "$file-$line"
             printf "Expecting $which L%d to match pattern ‘%s’\n" \
                 "$line" "$pattern"
             score_if $points sgrep -i -- "^ *$pattern *\$" "$file-$line"
-        elif pattern="$(strip_prefix '==' "$1")"; then
+        elif pattern="$(strip_prefix == "$1")"; then
             shift
             line=$(cat "$file")
             count=0
@@ -379,7 +397,7 @@ expect () {
             if [ -n "$line" ]; then
                 printf "??? Extra output unexpected after L%d\n" $count
             fi
-        elif pattern="$(strip_prefix '=' "$1")"; then
+        elif pattern="$(strip_prefix = "$1")"; then
             shift
             line=$(cat "$file")
             printf "Expecting $which to be exactly ‘%s’\n" \
@@ -432,73 +450,102 @@ current_tag=0
 
 
 prepare_test () {
-    local command
+    argcheck +1
+
+    local command; command=$1; shift
     local casename
     local tag
     local out
+    local stdin
     local stdout
     local stderr
-    eval "$(getargs command ...)"
 
     tag="$current_tag"
     current_tag=$(expr "$tag" + 1)
     casename="$(echo "$command" | sed 's%[/ ]%@%g')"
     out="logs/$casename-$tag.out"
+    stdin="logs/$casename-$tag.stdin"
     stdout="logs/$casename-$tag.stdout"
     stderr="logs/$casename-$tag.stderr"
+    exitcode="logs/$casename-$tag.exitcode"
 
     mkdir -p logs
 
     headingf - "Test case %s: %s" "$tag" "$command"
 
     echo "Preparing input:"
-    "$@" | sed 's/^/> /' | visify
+    "$@" > "$stdin"
+    sed 's/^/< /' "$stdin" | visify
     echo
 
-    printf "Running... "
-
-    docker_execute "$command" "$out" "$@"
-    result=$?
-
-    printf "done. Output was:\n"
-
-
-    grep -v '^#' "$out" | visify
+    echo "Running... done."
     echo
 
-    sed '/^< /!d;s/^< //' "$out" > "$stdout"
-    sed '/^! /!d;s/^! //' "$out" > "$stderr"
+    echo "Output was:"
+    docker_execute "$command" "$exitcode" <"$stdin" |
+        tee "$out" | visify
+    echo
 
-    if sgrep '^#TIMEOUT$' "$out"; then
-        headingf -s ! 'Timeout Error'
-        echo Your program was still running after $COURSE_GRADE_TIMEOUT s,
-        echo so I killed it.
-        echo
-        echo You probably have an infinite loop.
-        echo
-    elif ! sgrep '^#COMPLETE$' "$out"; then
-        headingf -s ! 'Excessive Output Error'
-        echo
-        echo Your program produced more than $COURSE_MAX_OUTPUT bytes
-        echo of output, so I killed it.
-        echo
-        echo You probably have an infinite loop.
-        echo
-    elif [ "$result" != 0 ]; then
-        echo "Exit code: $result"
-    fi
+    sed '/^> /!d;s/^..//' "$out" >|"$stdout"
+    sed '/^! /!d;s/^..//' "$out" >|"$stderr"
+    last_exitcode=$(cat "$exitcode")
 
-    last_stdout="$stdout"
-    last_stderr="$stderr"
-    return $result
+    case "$last_exitcode" in
+        '')
+            echo>&2 THIS SHOULD NOT HAPPEN
+            exit 10
+            ;;
+
+        0)
+            ;;
+
+        124)
+            headingf -s ! 'Timeout Error'
+            fmt <<-············EOF
+
+		Your code was still running after
+		$COURSE_GRADE_TIMEOUT s, so I killed it.
+
+		You likely have an infinite loop.
+············EOF
+            ;;
+
+        125)
+            headingf -s ! 'Excessive Output Error'
+            fmt <<-············EOF
+
+		Your code produced more than $COURSE_MAX_OUTPUT bytes
+		of output, so I killed it.
+
+		You likely have an infinite loop.
+············EOF
+            ;;
+
+        *)
+            echo "Exit code: $last_exitcode"
+            ;;
+    esac
+
+    last_stdout=$stdout
+    last_stderr=$stderr
 }
 
 assert_absence () {
-    local funname
-    local filename
-    eval "$(getargs funname filename)"
+    argcheck 2
+    local funname; funname=$1; shift
+    local filename; filename=$1; shift
+
     headingf - "Checking for ‘%s’ in %s (where it shouldn’t be)" \
         "$funname" $(basename "$filename")
+
+    fmt <<-····EOF
+
+        There should not be any calls to function $funname in file
+        $filename, because $filename should not contain code that calls
+        $funname directly.
+
+····EOF
+
     if ! egrep -nC2 "\\<$funname\\>" "$filename" &&
        test -f "$filename"
     then
