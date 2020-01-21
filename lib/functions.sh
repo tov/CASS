@@ -6,7 +6,11 @@ set -eo pipefail
 course_use () {
     local each
     for each; do
-        . "$COURSE_LIB/$each.lib.sh"
+        if [ -f "$COURSE_LIB/$each.lib.sh" ]; then
+            . "$COURSE_LIB/$each.lib.sh"
+        else
+            . "$course_cass/lib/$each.lib.sh"
+        fi
     done
 }
 
