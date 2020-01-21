@@ -7,6 +7,7 @@ get_points_helper () {
             false
             ;;
         *)
+            points=1
             true
             ;;
     esac
@@ -28,14 +29,21 @@ score_frac () {
 }
 
 score_if () {
+    local unit;
+    if [ "$points" = 1 ]; then
+        unit=point
+    else
+        unit=points
+    fi
+
     if "$@"; then
         html_test_result passed \
-            "<strong>Passed</strong> ($points / $points points)"
+            "<strong>Passed</strong> ($points / $points $unit)"
         add_to passed 1
         score_frac $points $points
     else
         html_test_result failed \
-            "<strong>Failed</strong> (0 / $points points)"
+            "<strong>Failed</strong> (0 / $points $unit)"
         add_to failed 1
         score_frac 0 $points
     fi

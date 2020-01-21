@@ -73,21 +73,35 @@ html_io_lines () {
     echo '</code>'
 }
 
+ccgo_open='<code class="grep_output">'
+ccgo_close='</code>'
+ccgo_clopen=$ccgo_close$ccgo_open
+
 html_grep_output () {
-    printf '<code class="grep_output">'
-    html_escape | sed -E '
-        /^--$/{
+    local pat; pat=$1
+    local sedprog
+
+    sedprog='
+        \@^--$@{
+            :again
             N
-            s@.*\n@</code><code class="grep_output">@
+            s/^--\n//
+            /^--$/bagain
+            s@^@'$ccgo_clopen'@
+        }
+
+        \@^('$ccgo_clopen')?([[:digit:]]*)[:-](.*)$@{
+            s@@\1<small>\2</small> \3@
+            s@'$pat'@\1<strong>\2</strong>@g
             bdone
         }
-        s@^([[:digit:]]*)[:-](.*)$@<small>\1</small> \2@
-        tokay
+
         s@.*@<strong>&</strong>@
-        tdone
-        :okay
-        s@'"$pat"'@\1<strong>\2</strong>@g
+
         :done
     '
-    printf '</code>'
+
+    printf "$ccgo_open"
+    html_escape | sed -E "$sedprog"
+    printf "$ccgo_close"
 }

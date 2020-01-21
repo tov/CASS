@@ -69,7 +69,6 @@ run_all_tests () {
 }
 
 prepare_test () {
-    local points; points=1
     local command; command=$1; shift
     local casename
     local tag
@@ -88,10 +87,6 @@ prepare_test () {
 
     while [ -n "$1" ]; do
         case "$1" in
-            +*)
-                points=${1#+}
-                shift
-                ;;
             -)
                 shift
                 ;;
@@ -112,43 +107,43 @@ prepare_test () {
                 shift
                 ;;
             -1)
-                exp_stdout=$points:$2
+                exp_stdout=$2
                 shift; shift
                 ;;
             -1*)
-                exp_stdout=$points:${1#-1}
+                exp_stdout=${1#-1}
                 shift
                 ;;
             -2)
-                exp_stderr=$points:$2
+                exp_stderr=$2
                 shift; shift
                 ;;
             -2*)
-                exp_stderr=$points:${1#-2}
+                exp_stderr=${1#-2}
                 shift
                 ;;
             -3)
-                exp_stdlog=$points:$2
+                exp_stdlog=$2
                 shift; shift
                 ;;
             -3*)
-                exp_stdlog=$points:${1#-3}
+                exp_stdlog=${1#-3}
                 shift
                 ;;
             -c)
-                exp_exitcode=$points:$2
+                exp_exitcode=$2
                 shift; shift
                 ;;
             -c*)
-                exp_exitcode=$points:${1#-c}
+                exp_exitcode=${1#-c}
                 shift
                 ;;
             -C)
-                exp_exitcode=$points:\!$2
+                exp_exitcode=\!$2
                 shift; shift
                 ;;
             -C*)
-                exp_exitcode=$points:\!${1#-C}
+                exp_exitcode=\!${1#-C}
                 shift
                 ;;
             --)
@@ -172,7 +167,7 @@ prepare_test () {
 
     mkdir -p logs
 
-    html_test_case 'Test case %s: <code class="filename">%s</code>' \
+    html_test_case 'Test case %s: <code class="filename">./%s</code>' \
         "$tag" "$command"
 
     if [ -n "$message" ]; then
@@ -189,10 +184,10 @@ prepare_test () {
         html_subhead "Expected Output:"
         {
             if [ -n "$exp_stderr" ]; then
-                sed 's/^/! /' "${exp_stderr#*:}"
+                sed 's/^/! /' "$exp_stderr"
             fi
             if [ -n "$exp_stdout" ]; then
-                sed 's/^/> /' "${exp_stdout#*:}"
+                sed 's/^/> /' "$exp_stdout"
             fi
         } | html_io_lines
 
@@ -207,7 +202,7 @@ prepare_test () {
 
     if [ -n "$exp_stdlog" ]; then
         html_subhead "Expected Test Log:"
-        sed 's/^/: /' "${exp_stdlog#*:}" | html_io_lines
+        sed 's/^/: /' "$exp_stdlog" | html_io_lines
         html_subhead "Actual Test Log:"
         sed 's/^/: /' "$act_stdlog" | html_io_lines
     fi
@@ -216,39 +211,34 @@ prepare_test () {
     sed '/^! /!d;s/^..//' "$act_out" >|"$act_stderr"
     last_exitcode=$(cat "$act_exitcode")
 
-    points=${exp_exitcode%%:*}
     case "$exp_exitcode" in
-        *:\!*)
-            exp_exitcode=${exp_exitcode#*:\!}
+        '')
+            check_last_exitcode
+            ;;
+        \!*)
+            exp_exitcode=${exp_exitcode#\!}
             html_expect "exit code ≠ $exp_exitcode, got $last_exitcode"
             score_if [ $exp_exitcode != "$last_exitcode" ]
             ;;
-        *:*)
-            exp_exitcode=${exp_exitcode#*:}
+        *)
             html_expect "exit code $exp_exitcode, got $last_exitcode"
             score_if [ $exp_exitcode = "$last_exitcode" ]
-            ;;
-        *)
-            check_last_exitcode
             ;;
     esac
 
     if [ -n "$exp_stdlog" ]; then
-        points=${exp_stdlog%%:*}
         exp_stdlog=${exp_stdlog#*:}
         html_check "expected grader log"
         score_if cmp -s "$exp_stdlog" "$act_stdlog"
     fi
 
     if [ -n "$exp_stdout" ]; then
-        points=${exp_stdout%%:*}
         exp_stdout=${exp_stdout#*:}
         html_check "expected standard output"
         score_if cmp -s "$exp_stdout" "$act_stdout"
     fi
 
     if [ -n "$exp_stderr" ]; then
-        points=${exp_stderr%%:*}
         exp_stderr=${exp_stderr#*:}
         html_check "expected standard error"
         score_if cmp -s "$exp_stderr" "$act_stderr"
@@ -312,7 +302,7 @@ assert_absence () {
     calls $hfunname directly."
 
     if egrep -sq "$pat" "$filename"; then
-        egrep -nC2 "$pat" "$filename" 2>&1 | html_grep_output || true
+        egrep -nC2 "$pat" "$filename" 2>&1 | html_grep_output "$pat" || true
         score_if false
     else
         score_if true
@@ -342,7 +332,7 @@ print_points_summary () {
     points_summary_tr 'Correctness score: ' %5.1f%% \
         $(bc_expr "100 * $actual / $possible")
     printf '</tbody>'
-    printf '</table>'
+    printf '</table>\n\n'
 
     bc_expr "$actual / $possible"
 }
