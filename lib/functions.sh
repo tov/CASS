@@ -282,7 +282,7 @@ find_student () {
     regexp=$1
 
     if ! netid=$(find_netid "$regexp" 2>/dev/null); then
-        netid=$(find_netids_by_info "$regexp" 2>/dev/null)
+        netid=$(find_netids_by_info "$regexp" 2>/dev/null) || true
 
         if [[ -n "$flag_1" ]]; then
             case "$netid" in
