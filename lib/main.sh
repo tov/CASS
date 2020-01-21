@@ -14,12 +14,20 @@ find_course_root () {
     pwd
 }
 
-# Find and remember course root
-COURSE_ROOT=$(find_course_root)
-export COURSE_ROOT
+load_cass_please () {
+    cass_is_loaded=1
 
-# Load helpful functions
-. "$COURSE_ROOT/.CASS/lib/functions.sh"
+    # Find and remember course root
+    COURSE_ROOT=$(find_course_root)
+    export COURSE_ROOT
 
-# Initialize the course environment
-course_init_env
+    # Load helpful functions
+    . "$COURSE_ROOT/.CASS/lib/functions.sh"
+
+    # Initialize the course environment
+    course_init_env
+}
+
+if [ -z "$cass_is_loaded" ]; then
+    load_cass_please
+fi

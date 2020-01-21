@@ -57,34 +57,6 @@ find_single () {
     printf '%s\n' "$1"
 }
 
-argcheck_helper () {
-    local got; got=$(( $# - 1 ))
-    local exp; exp=0
-
-    while [ $# -gt 1 ]; do
-        shift
-    done
-    exp=$1
-
-    case $exp in
-        +*)
-            exp=${exp#+}
-            if [ $exp -gt $got ]; then
-                echo>&2 "Got only $got arguments when $exp expected."
-                return 3
-            fi
-            ;;
-        *)
-            if [ $exp != $got ]; then
-                echo>&2 "Got $got arguments when $exp expected."
-                return 2
-            fi
-            ;;
-    esac
-}
-
-alias argcheck='argcheck_helper "$@"'
-
 getargs () (
     usage='Usage: eval "$(getargs [+[CMD]] [-OPTS] ARGNAME... [[RESTNAME]...])"'
 
