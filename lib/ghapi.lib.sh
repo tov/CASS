@@ -31,18 +31,15 @@ ghapi_curl () {
 }
 
 ghapi_uri_repo () {
-    eval "$(getargs + repo)"
-    echo repos/$github_org/$repo
+    echo repos/$github_org/$1
 }
 
 ghapi_uri_branch () {
-    eval "$(getargs + repo branch)"
-    echo $(ghapi_uri_repo $repo)/branches/$branch
+    echo repos/$github_org/$1/branches/$2
 }
 
 ghapi_uri_branch_protection () {
-    eval "$(getargs + repo branch)"
-    echo $(ghapi_uri_branch $repo $branch)/protection
+    echo repos/$github_org/$1/branches/$2/protection
 }
 
 ghapi_uri_org () {
@@ -50,7 +47,7 @@ ghapi_uri_org () {
 }
 
 ghapi_uri_org_repos () {
-    echo "$(ghapi_uri_org)/repos"
+    echo "orgs/$github_org/repos"
 }
 
 ghapi_uri_search_org_repos () {
