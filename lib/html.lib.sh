@@ -27,29 +27,16 @@ unhtml () {
     "
 }
 
-txt_only () {
-    printf '<span class="txt-only">'
-    printf '%s' "$*" | html_escape | tr -d '\n'
-    printf '</span>'
-}
-
-txt_nl () {
-    echo
+last_text_fmt=
+textf () {
+    last_text_fmt=$(printf '<span class="txt-only">%s</span>' "$1")
+    shift
+    printf "$last_text_fmt" "$@"
 }
 
 html_p () {
-    local fmt; fmt=$1; shift
-    printf "<p>$fmt</p>\n" "$@"
-}
-
-html_expect () {
-    local fmt; fmt=$1; shift
-    html_p "Expecting $fmt." "$@"
-}
-
-html_check () {
-    local fmt; fmt=$1; shift
-    html_p "Checking $fmt." "$@"
+    echo "<p>$*</p>" | fmt
+    echo
 }
 
 html_in_test_case=false
@@ -65,64 +52,65 @@ html_try_close_test_case () {
 
 html_test_case () {
     html_try_close_test_case
-    echo '<div class="test-case">'
-    txt_only '====='; txt_nl
-    txt_only '===== '
-    printf "<h3>$*</h3>\n"
-    txt_only '====='; txt_nl
-    echo '<div class="test-case-body">'
+    printf '<div class="test-case">\n'
+    textf '=====\n'
+    textf '===== '
+    printf '<h3>%s</h3>\n' "$*"
+    textf '=====\n'
+    printf '<div class="test-case-body">\n'
     html_in_test_case=true
 }
 
-html_tag_line () {
-    local tag; tag=$1; shift
-    local fmt; fmt=$1; shift
-    local end; end=$(echo "$tag" | sed 's/ .*//')
-    printf "<$tag>$fmt</$end>\n" "$@"
-}
-
 html_subhead () {
-    txt_only '=== '
-    printf '<h4>'
-    printf "$@" | html_escape
-    printf '</h4>\n'
+    textf '=== '
+    printf '<h4>%s</h4>\n\n' "$*"
 }
 
-html_test_result () {
-    local unit;
-    if [ "$4" = 1 ]; then
-        unit=point
+html_test_result_no_points () {
+    printf '<h4 class="test-result %s"><strong><span class="txt-only">%s </span>%s</strong></h4>\n\n' "$1" "$2" "$3"
+}
+
+html_test_result_with_points () {
+    if [ "$5" = 1 ]; then
+        printf "$test_result_tmpl1" "$1" "$2" "$3" "$4" "$5"
     else
-        unit=points
+        printf "$test_result_tmplN" "$1" "$2" "$3" "$4" "$5"
     fi
-
-    printf \
-        '<h4 class="test-result %s"><strong>%s</strong> (%s / %s %s)</h4>\n' \
-        "$1" "$2" "$3" "$4" "$unit"
 }
+
+test_result_tmpl_tmpl='<h4 class="test-result %%s"><strong><span class="txt-only">%%s </span>%%s</strong> (%%s / %%s %s)</h4>\\n\\n'
+test_result_tmpl1=$(printf "$test_result_tmpl_tmpl" point)
+test_result_tmplN=$(printf "$test_result_tmpl_tmpl" points)
+
+if [ -n "$NO_POINTS_MODE" ]; then
+    alias html_test_result=html_test_result_no_points
+else
+    alias html_test_result=html_test_result_with_points
+fi
 
 html_test_passed () {
-    txt_only '+++ '
-    html_test_result passed Passed "$1" "$1"
+    html_test_result passed +++ Passed "$1" "$1"
 }
 
 html_test_failed () {
-    txt_only '--- '
-    html_test_result failed Failed 0 "$1"
+    html_test_result failed --- Failed 0 "$1"
 }
 
 html_io_lines () {
+    local tag
+    tag="<span class=\"$2\"><span class=\"txt-only\">$1 </span>"
+
     printf '<code class="io_lines">'
+
     html_escape | sed -E '
-        s@^: (.*)@<span class="stdlog">\1</span>@
-        s@^! (.*)@<span class="stderr">\1</span>@
-        s@^&gt; (.*)@<span class="stdout">\1</span>@
-        s@^&lt; (.*)@<span class="stdin">\1</span>@
-        tdone
-        /^[[:space:]]*$/d
-        s@.*@<span class="unknown">&</span>@
-        :done
+        ${
+            /^%$/d
+            s@%$@<span class="no-newline">%</span>@
+        }
+        s@[[:space:]]+$@<span class="trailing-ws">&</span>@
+        s@.*@'"$tag"'&</span>@
     '
+
     echo '</code>'
 }
 

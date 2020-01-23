@@ -8,6 +8,11 @@ build_log=build.log
 tests_log=tests.log
 tests_hlog=tests.hlog
 
+lf_char='
+'
+del_char=$(printf '\177')
+tab_char=$(printf '\t')
+
 current_tag=0
 
 course_use docker html points
@@ -19,6 +24,8 @@ trap '! $html_in_test_case || print_points_summary' EXIT
 bc_expr () {
     echo "$*" | bc -l
 }
+
+auto_files_to_rm=
 
 run_all_tests () {
     local points; get_points
@@ -64,190 +71,214 @@ run_all_tests () {
             code_arg=-c$(cat "$stem".code)
         fi
 
-        prepare_test "$command" "$in_arg" "$msg_arg" \
-            "$code_arg" "$out_arg" "$err_arg" "$log_arg"
+        program_test "$command" "$in_arg" "$msg_arg" \
+            "$code_arg" "$err_arg" "$out_arg" "$log_arg"
     done
 }
 
-prepare_test () {
-    local command; command=$1; shift
-    local casename
-    local tag
-    local message
-    local exp_stdin
-    local exp_stdout
-    local exp_stderr
-    local exp_stdlog
-    local exp_exitcode
-    local act_out
-    local act_stdin
-    local act_stdout
-    local act_stderr
-    local act_stdlog
-    local act_exitcode
+file_size () {
+    wc -c "$1" | awk '{print $1}'
+}
+
+evaluate_input_param () {
+    {
+        case "$1" in
+            :*)
+                printf -- "${1#:}"
+                ;;
+            =*)
+                printf -- %s "${1#=}"
+                ;;
+            *)
+                cat "$1"
+                ;;
+        esac
+
+        if [ "$3" = % ]; then
+            echo %
+        fi
+    } >> "$2"
+}
+
+get_param_helper () {
+    case "$1" in
+        ??)
+            p=$2
+            false
+            ;;
+        -?*)
+            p=${1#-?}
+            true
+            ;;
+    esac
+}
+
+alias get_param='get_param_helper "$@" || shift; shift'
+
+shellsafe_print () {
+    printf '%s' "$1" | sed "
+        s/'/'\\\\''/g
+        s/^/'/
+        s/\$/'/
+    " | tr -d '\n'
+}
+
+do_later () {
+    {
+        shellsafe_print "$1"
+        while shift; do
+            printf ' '
+            shellsafe_print "$1"
+        done
+        printf '\n'
+    } >> "$check_sh"
+}
+
+program_test () {
+    local command;      command=$1; shift
+    local tag;          tag=$(( current_tag++ ))
+    local casename;     casename=$(echo "$command" | sed 's%[/ ]%@%g')
+    local prefix;       prefix=$(printf 'logs/%03d-%s' $tag "$casename")
+
+    local check_sh;     check_sh=$prefix.check.sh
+    local message;      message=$prefix.msg
+
+    local old_points;   old_points=${points:-1}
+    local points;       points=$old_points
+
+    local act_both;     act_both=$prefix.act-both
+    local act_in;       act_in=$prefix.act-in
+    local act_out;      act_out=$prefix.act-out
+    local act_err;      act_err=$prefix.act-err
+    local act_log;      act_log=$prefix.act-log
+    local act_exitcode; act_exitcode=$prefix.act-exitcode
+
+    local exp_out;      exp_out=$prefix.exp-out
+    local exp_err;      exp_err=$prefix.exp-err
+    local exp_log;      exp_log=$prefix.exp-log
+    local exp_exitcode; exp_exitcode=
+
+    mkdir -p logs
+    touch "$act_in"
+    touch "$check_sh"
+
+    local p
+    local np; np=$points
 
     while [ -n "$1" ]; do
         case "$1" in
             -)
                 shift
                 ;;
-            -m)
-                message=$2
-                shift; shift
+            +*)
+                np=${1#+}
+                shift
                 ;;
             -m*)
-                message=${1#-m}
-                shift
-                ;;
-            -0)
-                exp_stdin=$2
-                shift; shift
+                get_param
+                evaluate_input_param "$p" "$message"
                 ;;
             -0*)
-                exp_stdin=${1#-0}
-                shift
-                ;;
-            -1)
-                exp_stdout=$2
-                shift; shift
+                get_param
+                evaluate_input_param "$p" "$act_in"
                 ;;
             -1*)
-                exp_stdout=${1#-1}
-                shift
-                ;;
-            -2)
-                exp_stderr=$2
-                shift; shift
+                get_param
+                evaluate_input_param "$p" "$exp_out" %
+                do_later check_output $np "$exp_out" "$act_out" stdout
                 ;;
             -2*)
-                exp_stderr=${1#-2}
-                shift
-                ;;
-            -3)
-                exp_stdlog=$2
-                shift; shift
+                get_param
+                evaluate_input_param "$p" "$exp_err" %
+                do_later check_output $np "$exp_err" "$act_err" stderr
                 ;;
             -3*)
-                exp_stdlog=${1#-3}
-                shift
-                ;;
-            -c)
-                exp_exitcode=$2
-                shift; shift
+                get_param
+                evaluate_input_param "$p" "$exp_log" %
+                do_later check_output $np "$exp_log" "$act_log" 'test log'
                 ;;
             -c*)
-                exp_exitcode=${1#-c}
-                shift
-                ;;
-            -C)
-                exp_exitcode=\!$2
-                shift; shift
+                get_param
+                do_later check_exitcode "=$p"
                 ;;
             -C*)
-                exp_exitcode=\!${1#-C}
-                shift
-                ;;
-            --)
-                shift
-                break
+                get_param
+                do_later check_exitcode "≠$p"
                 ;;
             *)
-                break
+                echo >&2 "I don't understand: ‘$1’"
+                shift
                 ;;
         esac
     done
 
-    tag=$(( current_tag++ ))
-    casename="$(echo "$command" | sed 's%[/ ]%@%g')"
-    act_out="logs/$casename-$tag.out"
-    act_stdin="logs/$casename-$tag.stdin"
-    act_stdout="logs/$casename-$tag.stdout"
-    act_stderr="logs/$casename-$tag.stderr"
-    act_stdlog="logs/$casename-$tag.stdlog"
-    act_exitcode="logs/$casename-$tag.exitcode"
+    docker_execute "$command" "$act_exitcode" \
+        <"$act_in" >"$act_both" 2>"$act_log"
 
-    mkdir -p logs
+    sed '/^1 /!d; s/^..//' "$act_both" >|"$act_out"
+    sed '/^2 /!d; s/^..//' "$act_both" >|"$act_err"
+    last_exitcode=$(cat "$act_exitcode")
 
     html_test_case Test case $tag: \
         "<code class='filename'>./$command</code>"
 
-    if [ -n "$message" ]; then
+    if [ -f "$message" ]; then
         html_p "$(cat "$message")"
     fi
 
     html_subhead Input:
-    if [ -n "$exp_stdin" ]; then
-        cat "$exp_stdin"
-    fi > "$act_stdin"
-    sed 's/^/< /' "$act_stdin" | html_io_lines
+    html_io_lines '‹' stdin < "$act_in"
 
-    if [ -n "$exp_stdout$exp_stderr" ]; then
-        html_subhead "Expected Output:"
-        {
-            if [ -n "$exp_stderr" ]; then
-                sed 's/^/! /' "$exp_stderr"
-            fi
-            if [ -n "$exp_stdout" ]; then
-                sed 's/^/> /' "$exp_stdout"
-            fi
-        } | html_io_lines
+    display_output '›' stdout 'Standard Output' "$exp_out" "$act_out"
+    display_output '»' stderr 'Standard Error'  "$exp_err" "$act_err"
+    display_output ':' stdlog 'Test Log'        "$exp_log" "$act_log"
 
-        html_subhead "Actual Output:"
-    else
-        html_subhead "Output:"
-    fi
+    check_last_exitcode
 
-    docker_execute "$command" "$act_exitcode" \
-        <"$act_stdin" 2>"$act_stdlog" \
-        | tee "$act_out" | html_io_lines
+    . "$check_sh"
 
-    if [ -n "$exp_stdlog" ]; then
-        html_subhead "Expected Test Log:"
-        sed 's/^/: /' "$exp_stdlog" | html_io_lines
-        html_subhead "Actual Test Log:"
-        sed 's/^/: /' "$act_stdlog" | html_io_lines
-    fi
+    last_stdout=$act_out
+    last_stderr=$act_err
+    last_stdlog=$act_log
+}
 
-    sed '/^> /!d;s/^..//' "$act_out" >|"$act_stdout"
-    sed '/^! /!d;s/^..//' "$act_out" >|"$act_stderr"
-    last_exitcode=$(cat "$act_exitcode")
-
-    case "$exp_exitcode" in
-        '')
-            check_last_exitcode
+check_exitcode () {
+    case "$1" in
+        =*)
+            set -- "${1#=}"
+            html_p Checking that exit code == $1.
+            score_if [ "$1" = "$last_exitcode" ]
             ;;
-        \!*)
-            exp_exitcode=${exp_exitcode#\!}
-            html_expect "exit code ≠ $exp_exitcode, got $last_exitcode"
-            score_if [ $exp_exitcode != "$last_exitcode" ]
-            ;;
-        *)
-            html_expect "exit code $exp_exitcode, got $last_exitcode"
-            score_if [ $exp_exitcode = "$last_exitcode" ]
+        ≠*)
+            set -- "${1#≠}"
+            html_p Checking that exit code \!= $1.
+            score_if [ "$1" != "$last_exitcode" ]
             ;;
     esac
 
-    if [ -n "$exp_stdlog" ]; then
-        exp_stdlog=${exp_stdlog#*:}
-        html_check "expected grader log"
-        score_if cmp -s "$exp_stdlog" "$act_stdlog"
+}
+
+# $1: sigil             '»'
+# $2: class             stderr
+# $3: stream name       'Standard Error'
+# $4: expected (file)   "$exp_err"
+# $5: actual (file)     "$act_err"
+display_output () {
+    if [ -f "$4" ]; then
+        html_subhead Expected $3:
+        html_io_lines "$1" "$2" <"$4"
     fi
 
-    if [ -n "$exp_stdout" ]; then
-        exp_stdout=${exp_stdout#*:}
-        html_check "expected standard output"
-        score_if cmp -s "$exp_stdout" "$act_stdout"
+    if [ -f "$4" ] || [ "$(file_size "$5")" -gt 2 ]; then
+        html_subhead Actual $3:
+        html_io_lines "$1" "$2" <"$5"
     fi
+}
 
-    if [ -n "$exp_stderr" ]; then
-        exp_stderr=${exp_stderr#*:}
-        html_check "expected standard error"
-        score_if cmp -s "$exp_stderr" "$act_stderr"
-    fi
-
-    last_stdout=$act_stdout
-    last_stderr=$act_stderr
-    last_stdlog=$act_stdlog
+check_output () {
+    local points; points=$1
+    html_p Comparing actual $4 to expected $4.
+    score_if cmp -s "$2" "$3"
 }
 
 check_last_exitcode () {
@@ -258,10 +289,11 @@ check_last_exitcode () {
             ;;
 
         0)
+            html_subhead Exit Code: '<em class="exit-success">0</em>'
             ;;
 
         124)
-            html_subhead 'Timeout Error'
+            html_subhead Timeout Error
             fmt <<-············EOF
 		Your code was still running after
 		$COURSE_GRADE_TIMEOUT s, so I killed it.
@@ -271,7 +303,7 @@ check_last_exitcode () {
             ;;
 
         125)
-            html_subhead 'Excessive Output Error'
+            html_subhead Excessive Output Error
             fmt <<-············EOF
 		Your code produced more than $COURSE_MAX_OUTPUT bytes
 		of output, so I killed it.
@@ -281,7 +313,8 @@ check_last_exitcode () {
             ;;
 
         *)
-            html_subhead 'Exit code: %s' "$last_exitcode"
+            html_subhead Exit Code: \
+                '<em class="exit-error">'$last_exitcode'</em>'
             ;;
     esac
 }
@@ -298,9 +331,9 @@ assert_absence () {
 
     html_test_case "Checking for $hfunname in $hbfilename"
 
-    html_p "There should not be any calls to function $hfunname
-    in file $hfilename, because $hfilename should not contain code that
-    calls $hfunname directly."
+    html_p There should not be any calls to function $hfunname \
+        in file $hfilename, because $hfilename should not contain code \
+        that calls $hfunname directly.
 
     if egrep -sq "$pat" "$filename"; then
         egrep -nC2 "$pat" "$filename" 2>&1 | html_grep_output "$pat" || true
@@ -316,25 +349,59 @@ points_summary_tr () {
 
 print_points_summary () {
     if [ $possible = 0 ]; then
-        html_p 'No points possible.'
+        html_p No points possible.
         echo 0.01
         return
     fi
 
     html_try_close_test_case
+
     printf '<table class="points-summary">'
     printf '<colgroup><col/><col/></colgroup>'
     printf '<thead><tr><th colspan="2">Summary</th></tr></thead>\n'
-    printf '<tbody>'
+    printf '<tbody>\n'
     points_summary_tr 'Checks passed: ' %d $passed
     points_summary_tr 'Checks failed: ' %d $failed
-    points_summary_tr 'Points earned: ' %d $actual
-    points_summary_tr 'Points possible: ' %d $possible
-    points_summary_tr 'Correctness score: ' %5.1f%% \
-        $(bc_expr "100 * $actual / $possible")
-    printf '</tbody>'
-    printf '</table>\n\n'
+    if [ -z "$NO_POINTS_MODE" ]; then
+        points_summary_tr 'Points earned: ' %d $actual
+        points_summary_tr 'Points possible: ' %d $possible
+        points_summary_tr 'Correctness score: ' %5.1f%% \
+            $(bc_expr "100 * $actual / $possible")
+    fi
+    printf '</tbody>\n'
+    printf '</table>\n'
 
-    bc_expr "$actual / $possible"
+    if [ -n "$NO_POINTS_MODE" ]; then
+        echo -
+    else
+        bc_expr "$actual / $possible"
+    fi
+}
+
+c_escape_chars () {
+    printf '%s\n' "$2"          |
+        sed -E "
+            s/\\\\/&&/g
+            s/$1/\\\\&/g
+            s/$tab_char/\\\\t/g
+            s/$del_char/\\\\177/g
+            2,\$s/^/\\\\n/ 
+        "                       |
+        tr -d '\n'
+}
+
+c_quote_string () {
+    printf '%s%s%s' \
+        "$1" \
+        "$(c_escape_chars "$1" "$2")" \
+        "$1"
+}
+
+cdq () {
+    c_quote_string \" "$1"
+}
+
+csq () {
+    c_quote_string \' "$1"
 }
 

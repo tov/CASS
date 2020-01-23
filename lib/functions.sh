@@ -34,6 +34,19 @@ course_load_var () {
     fi
 }
 
+course_eval_env () {
+    eval "$(sed <"$1" -E '
+        s/^[[:space:]]*//
+        /^(#|$)/bdone
+        /^([_[:alpha:]][_[:alnum:]]*)=(.*)$/{
+            s//\1=\2; export \1/
+            bdone
+        }
+        s/.*/printf >\&2 '\''What?: %s\\n'\'' '\''&'\''/
+        :done
+    ')"
+}
+
 course_init_env () {
     if [[ -d "$COURSE_ROOT/private" ]]; then
         COURSE_PRIVATE=$COURSE_ROOT/private
@@ -55,6 +68,11 @@ course_init_env () {
     export COURSE_VAR
 
     . "$COURSE_ETC/config.sh"
+
+    local i
+    for i in "$COURSE_ETC"/*.env; do
+        course_eval_env "$i"
+    done
 }
 
 find_single () {
