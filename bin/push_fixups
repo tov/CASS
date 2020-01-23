@@ -60,7 +60,7 @@ for repo in $(ghapi_list_hw_repos $hw); do
         G git push origin master
 
         if [ -z "$flag_R" ] && ref_exists origin/develop; then
-            G hub pull-request --base develop --head master \
+            G hub pull-request --base=develop --head=master \
                     --message="$message"
         fi
     fi
