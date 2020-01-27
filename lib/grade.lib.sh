@@ -248,7 +248,7 @@ check_exitcode () {
             html_p Checking that exit code == $1.
             score_if [ "$1" = "$last_exitcode" ]
             ;;
-        ≠*)
+        '≠'*)
             set -- "${1#≠}"
             html_p Checking that exit code \!= $1.
             score_if [ "$1" != "$last_exitcode" ]
