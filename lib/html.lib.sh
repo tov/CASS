@@ -112,7 +112,12 @@ html_io_lines () {
             /^%$/d
             s@%$@<span class="no-newline">%</span>@
         }
-        s@[[:space:]]+$@<span class="trailing-ws">&</span>@
+        :loop
+        /([[:space:]])([[:space:]]*)$/{
+            s@@<span class="trailing-ws">\1</span>\2@
+            bloop
+        }
+        s@'"$del_char"'@<span class="control-char">\\x7F</span>@g
         s@.*@'"$tag"'&</span>@
     '
 
