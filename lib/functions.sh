@@ -255,6 +255,10 @@ all_netids () {
     ls
 }
 
+netid_exists () {
+    test -d "$COURSE_DB/students/$1"
+}
+
 find_single () {
     eval "$(getargs + description ...)"
 
@@ -350,7 +354,18 @@ find_student () {
 }
 
 resolve_student () {
-    find_student -1q "$@"
+    case "$1" in
+        -C) # Don't check
+            echo "$2"
+            ;;
+        -R) # Check but don't search
+            assert "NetID doesn't exist: $2" netid_exists "$2" &&
+            echo "$2"
+            ;;
+        *)  # Search
+            find_student -1q "$@"
+            ;;
+    esac
 }
 
 print_student_property () {
