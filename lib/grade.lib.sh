@@ -371,24 +371,20 @@ print_points_summary () {
     fi
 }
 
-c_escape_chars () {
+c_quote_string () {
     printf '%s\n' "$2"          |
-        sed -E "
-            s/\\\\/&&/g
-            s/$1/\\\\&/g
-            s/$tab_char/\\\\t/g
-            s/$del_char/\\\\177/g
-            2,\$s/^/\\\\n/ 
-        "                       |
+        sed -E '
+            s/\\/&&&&/g
+            s/'"$1"'/\\\\&/g
+            s/	/\\\\t/g
+            s/'"$del_char"'/\\\\x7F/g
+            2,$s/^/\\\\n/
+            1s/^/'"$1"'/
+            $s/$/'"$1"'/
+        '                       |
         tr -d '\n'
 }
 
-c_quote_string () {
-    printf '%s%s%s' \
-        "$1" \
-        "$(c_escape_chars "$1" "$2")" \
-        "$1"
-}
 
 cdq () {
     c_quote_string \" "$1"
