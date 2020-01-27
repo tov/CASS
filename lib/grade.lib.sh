@@ -10,7 +10,7 @@ tests_hlog=tests.hlog
 
 lf_char='
 '
-del_char=$(printf '\177')
+del_char=$(printf '\x7F')
 tab_char=$(printf '\t')
 
 current_tag=0
