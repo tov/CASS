@@ -283,7 +283,7 @@ check_output () {
 check_last_exitcode () {
     case "$last_exitcode" in
         '')
-            echo>&2 THIS SHOULD NOT HAPPEN
+            echo>&2 Blank exit code\?
             exit 10
             ;;
 
@@ -292,23 +292,17 @@ check_last_exitcode () {
             ;;
 
         124)
-            html_subhead Timeout Error
-            fmt <<-············EOF
-		Your code was still running after
-		$COURSE_GRADE_TIMEOUT s, so I killed it.
-
-		You likely have an infinite loop.
-············EOF
+            html_errorhead Timeout Error
+            html_p Your code was still running after \
+                $COURSE_GRADE_TIMEOUT s, so I killed it.
+            html_p You likely have an infinite loop.
             ;;
 
         125)
-            html_subhead Excessive Output Error
-            fmt <<-············EOF
-		Your code produced more than $COURSE_MAX_OUTPUT bytes
-		of output, so I killed it.
-
-		You likely have an infinite loop.
-············EOF
+            html_errorhead Excessive Output Error
+            html_p Your code produced more than $COURSE_MAX_OUTPUT \
+                bytes of output, so I killed it.
+            html_p You likely have an infinite loop.
             ;;
 
         *)

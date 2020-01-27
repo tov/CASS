@@ -66,6 +66,11 @@ html_subhead () {
     printf '<h4>%s</h4>\n\n' "$*"
 }
 
+html_errorhead () {
+    textf '!!! '
+    printf '<h4 class="error">%s</h4>\n\n' "$*"
+}
+
 html_test_result_no_points () {
     printf '<h4 class="test-result %s"><strong><span class="txt-only">%s </span>%s</strong></h4>\n\n' "$1" "$2" "$3"
 }
