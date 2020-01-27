@@ -158,9 +158,8 @@ program_test () {
     local exp_log;      exp_log=$prefix.exp-log
     local exp_exitcode; exp_exitcode=
 
-    mkdir -p logs
-    touch "$act_in"
-    touch "$check_sh"
+    rm -Rf logs
+    mkdir logs
 
     local p
     local np; np=$points
