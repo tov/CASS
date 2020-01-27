@@ -75,6 +75,27 @@ course_init_env () {
     done
 }
 
+assert () {
+    local code
+    local msg
+
+    case "$1" in
+        -*)
+            code=${1#-}; shift
+            ;;
+        *)
+            code=1
+            ;;
+    esac
+
+    msg=$1; shift
+
+    if ! "$@"; then
+        echo >&2 "$msg"
+        return $code
+    fi
+}
+
 find_single () {
     eval "$(getargs + description ...)"
 
