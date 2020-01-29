@@ -208,11 +208,15 @@ program_test () {
                 ;;
             -c*)
                 get_param
-                do_later check_exitcode "=$p"
+                do_later check_exitcode $np "=$p"
                 ;;
             -C*)
                 get_param
-                do_later check_exitcode "≠$p"
+                do_later check_exitcode $np "≠$p"
+                ;;
+            -d*)
+                get_param
+                docker_opts="$docker_opts $p"
                 ;;
             *)
                 echo >&2 "I don't understand: ‘$1’"
@@ -252,6 +256,7 @@ program_test () {
 }
 
 check_exitcode () {
+    local points; points=$1; shift
     case "$1" in
         =*)
             set -- "${1#=}"
