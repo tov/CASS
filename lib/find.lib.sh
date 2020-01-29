@@ -3,7 +3,7 @@ format_homework () {
 }
 
 find_team_repo () {
-    echo "$COURSE_VAR/grading/$2-$(format_homework "$1")"
+    echo "$COURSE_VAR/grading/$(format_homework "$1")/$2"
 }
 
 find_existing_file () {
