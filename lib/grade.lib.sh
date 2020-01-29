@@ -89,6 +89,9 @@ evaluate_input_param () {
             =*)
                 printf -- %s "${1#=}"
                 ;;
+            \!*)
+                ${1#!}
+                ;;
             *)
                 cat "$1"
                 ;;
