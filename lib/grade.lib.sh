@@ -139,9 +139,11 @@ do_later () {
 
 program_test () {
     local command;      command=$1; shift
+    local realcmd;      realcmd=$command
     local tag;          tag=$(( current_tag++ ))
     local casename;     casename=$(echo "$command" | sed 's%[/ ]%@%g')
     local prefix;       prefix=$(printf 'logs/%03d-%s' $tag "$casename")
+    local docker_opts;  docker_opts=
 
     local check_sh;     check_sh=$prefix.check.sh
     local message;      message=$prefix.msg
@@ -163,6 +165,7 @@ program_test () {
 
     rm -Rf logs
     mkdir logs
+    touch "$act_in"
 
     local p
     local np; np=$points
@@ -175,6 +178,10 @@ program_test () {
             +*)
                 np=${1#+}
                 shift
+                ;;
+            -x*)
+                get_param
+                realcmd=$p
                 ;;
             -m*)
                 get_param
@@ -214,7 +221,7 @@ program_test () {
         esac
     done
 
-    docker_execute "$command" "$act_exitcode" \
+    docker_test "$realcmd" "$act_exitcode" $docker_opts \
         <"$act_in" >"$act_both" 2>"$act_log"
 
     sed '/^1 /!d; s/^..//' "$act_both" >|"$act_out"
