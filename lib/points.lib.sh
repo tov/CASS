@@ -24,6 +24,12 @@ add_to () {
 }
 
 score_frac () {
+    if [ -n "$DIE_ON_FAILED_TEST" ] && [ "$1" = 0 ] && [ "$2" != 0 ]; then
+        echo >&2 "DYING ON FAILED TEST"
+        actual=-$possible
+        exit 13
+    fi
+
     add_to actual $1
     add_to possible $2
 }
