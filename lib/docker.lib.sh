@@ -15,6 +15,7 @@ docker_start () {
                     --volume "$(pwd):/hw:ro" \
                     --volume "$(pwd)/build:/hw/build:rw" \
                     --workdir /hw \
+                    "$@" \
                     ubuntu-gcc \
                     sh -c 'sleep 600'
             ) || return 1
@@ -30,6 +31,7 @@ docker_start () {
                     --tmpfs /tmp \
                     --volume "$(pwd):/hw:ro" \
                     --workdir /hw/build \
+                    "$@" \
                     ubuntu-gcc \
                     sh -c 'sleep 300'
             ) || return 1
@@ -82,24 +84,23 @@ docker_build () {
 docker_test () {
     local hash
     hash=$(get_current_container test) || return 1
-    gtimeout $COURSE_GRADE_TIMEOUT \
-        docker exec --interactive $hash "$@"
-}
 
-docker_execute () {
     local command; command=$1; shift
     local exitcode; exitcode=$1; shift
 
     case "$command" in
-        =*)
-            command=${command#=}
+        [/.~]*)
+            command=$command
             ;;
         *)
             command=./$command
             ;;
     esac
 
-    if docker_test ./capture_output.sh $COURSE_MAX_OUTPUT $command; then
+    if gtimeout $COURSE_GRADE_TIMEOUT \
+        docker exec --interactive "$@" $hash \
+        capture_output.sh $COURSE_MAX_OUTPUT $command
+    then
         echo 0 >| "$exitcode"
     else
         echo $? >| "$exitcode"
