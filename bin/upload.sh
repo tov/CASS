@@ -49,8 +49,7 @@ if [[ -n "$flag_m$flag_W" ]]; then
         echo >&2 "\$MAN_HOST not set; using $MAN_HOST"
     fi
 
-    chmod -R a+rX man
-    tar cp man | ssh "$MAN_HOST" 'tar xpvC pub/share'
+    ssh "$MAN_HOST" pub/scripts/update.sh
 fi
 
 if [[ -z "$flag_W" ]]; then
