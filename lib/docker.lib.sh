@@ -1,4 +1,19 @@
-# TODO
+# Start, use, and stop docker.
+
+docker_time_limit=600
+
+docker_lib_on_exit () {
+    for hash in $docker_kill_on_exit_list; do
+        docker kill $hash >/dev/null
+    done
+}
+
+register_exit_function docker_lib_on_exit
+
+docker_kill_on_exit () {
+    set -- $docker_kill_on_exit_list $*
+    docker_kill_on_exit_list=$*
+}
 
 docker_start () {
     local kind; kind=$1; shift
@@ -17,9 +32,9 @@ docker_start () {
                     --workdir /hw \
                     "$@" \
                     ubuntu-gcc \
-                    sh -c 'sleep 600'
-            ) || return 1
-            trap "docker kill $hash 1>/dev/null" EXIT
+                    sh -c "sleep $docker_time_limit"
+            ) || cass_error 10
+            docker_kill_on_exit $hash
             CURRENT_BUILD_CONTAINER=$hash
             export CURRENT_BUILD_CONTAINER
             ;;
@@ -33,15 +48,14 @@ docker_start () {
                     --workdir /hw/build \
                     "$@" \
                     ubuntu-gcc \
-                    sh -c 'sleep 300'
-            ) || return 1
-            trap "docker kill $hash 1>/dev/null" EXIT
+                    sh -c "sleep $docker_time_limit"
+            ) || cass_error 11
+            docker_kill_on_exit $hash
             CURRENT_TEST_CONTAINER=$hash
             export CURRENT_TEST_CONTAINER
             ;;
         *)
-            echo >&2 "docker_start: unknown kind: $kind"
-            return 1
+            cass_error 12 "docker_start: unknown kind: $kind" || return
             ;;
     esac
 }
@@ -55,8 +69,8 @@ get_current_container_var () {
             echo CURRENT_TEST_CONTAINER
             ;;
         *)
-            echo >&2 "get_current_container_var: unknown kind: $1"
-            return 1
+            cass_error 13 "get_current_container_var: unknown kind: $1" ||
+                return
             ;;
     esac
 }
@@ -70,23 +84,37 @@ get_current_container () {
     if [ -n "$hash" ]; then
         echo $hash
     else
-        echo >&2 "get_current_container: $varname not set"
-        return 1
+        cass_error 14 "get_current_container: $varname not set" || return
     fi
 }
 
 docker_build () {
     local hash
-    hash=$(get_current_container build) || return 1
+    hash=$(get_current_container build) || return
     docker exec $hash "$@"
 }
 
 docker_test () {
     local hash
-    hash=$(get_current_container test) || return 1
+    hash=$(get_current_container test) || return
+
+    local outer_runner
+    outer_runner="gtimeout $COURSE_GRADE_TIMEOUT"
+
+    local inner_runner
+    inner_runner="capture_output.sh $COURSE_MAX_OUTPUT"
+
+    case "$1" in
+        -I*)
+            inner_runner=${1#-I}
+            shift
+            ;;
+        *)
+            ;;
+    esac
 
     local command; command=$1; shift
-    local exitcode; exitcode=$1; shift
+    local exitcodefile; exitcodefile=$1; shift
 
     case "$command" in
         [/.~]*)
@@ -97,13 +125,13 @@ docker_test () {
             ;;
     esac
 
-    if gtimeout $COURSE_GRADE_TIMEOUT \
+    if $outer_runner \
         docker exec --interactive "$@" $hash \
-        capture_output.sh $COURSE_MAX_OUTPUT $command
+        $inner_runner $command
     then
-        echo 0 >| "$exitcode"
+        echo 0 >|"$exitcodefile"
     else
-        echo $? >| "$exitcode"
+        echo $? >|"$exitcodefile"
     fi
 }
 

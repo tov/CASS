@@ -10,8 +10,12 @@
 eval "$(getargs -mWv)"
 
 src=web
-dst=/tmp/upload
+tempdir=/tmp/upload
 man_host=batgirl.eecs.northwestern.edu
+
+remove_tempdir () {
+    rm -Rf $tempdir
+}
 
 assert_branch () {
     local dir
@@ -38,26 +42,33 @@ assert_branch () {
     fi
 }
 
-cd "$COURSE_ROOT"
-
-assert_branch .       refs/heads/master
-assert_branch web/lab refs/heads/master
-
-if [[ -n "$flag_m$flag_W" ]]; then
+upload_man_pages () {
     if [[ -z "$MAN_HOST" ]]; then
         MAN_HOST="$man_host"
         echo >&2 "\$MAN_HOST not set; using $MAN_HOST"
     fi
 
     ssh "$MAN_HOST" pub/scripts/update.sh
+}
+
+upload_website () {
+    remove_tempdir
+    register_exit_function remove_tempdir
+
+    "$COURSE_BIN"/publish.sh $flag_v $src $tempdir &&
+    rsync -avz --delete --chmod=a+rX $tempdir/ $web_host:$web_path
+}
+
+cd "$COURSE_ROOT"
+
+assert_branch .       refs/heads/master
+assert_branch web/lab refs/heads/master
+
+if [[ -n "$flag_m$flag_W" ]]; then
+    upload_man_pages
 fi
 
 if [[ -z "$flag_W" ]]; then
-    rm -Rf $dst
-    trap 'rm -Rf $dst' EXIT
-
-    "$COURSE_BIN"/publish.sh $flag_v $src $dst &&
-        rsync -avz --delete --chmod=a+rX $dst/ $web_host:$web_path
-exit
-
+    upload_website
 fi
+

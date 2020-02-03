@@ -41,8 +41,6 @@ html_p () {
 
 html_in_test_case=false
 
-trap '! $html_in_test_case || html_try_close_test_case' EXIT
-
 html_try_close_test_case () {
     if $html_in_test_case; then
         echo '</div></div>'

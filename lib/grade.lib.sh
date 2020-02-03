@@ -19,7 +19,13 @@ course_use docker html points
 # TODO: remove?
 course_use find
 
-trap '! $html_in_test_case || print_points_summary' EXIT
+grader_on_exit () {
+    if $html_in_test_case; then
+        print_points_summary
+    fi
+}
+
+register_exit_function grader_on_exit
 
 bc_expr () {
     echo "$*" | bc -l
@@ -172,7 +178,9 @@ program_test () {
 
     while [ -n "$1" ]; do
         case "$1" in
-            -)
+            # ignoring emptyish arguments makes it easier to forward
+            # optional arguments.
+            -|'')
                 shift
                 ;;
             +*)

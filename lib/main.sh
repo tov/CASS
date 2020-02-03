@@ -28,6 +28,9 @@ load_cass_please () {
 
     # Initialize the course environment
     course_init_env
+
+    # Preserve stderr as FD 4:
+    exec 4>&2
 }
 
 if [ -z "$course_cass" ]; then

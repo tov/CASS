@@ -75,6 +75,20 @@ course_init_env () {
     done
 }
 
+CASS_on_exit () {
+    for cmd in $CASS_on_exit_list; do
+        $cmd ||
+            echo >&4 "CASS_on_exit: $cmd returned $?"
+    done
+}
+
+trap CASS_on_exit EXIT
+
+register_exit_function () {
+    set -- $CASS_on_exit_list $*
+    CASS_on_exit_list=$*
+}
+
 assert () {
     local code
     local msg
@@ -91,7 +105,7 @@ assert () {
     msg=$1; shift
 
     if ! "$@"; then
-        echo >&2 "$msg"
+        echo >&4 "$msg"
         return $code
     fi
 }
@@ -100,8 +114,8 @@ find_single () {
     eval "$(getargs + description ...)"
 
     if [[ -z "$1" ]] || [[ -n "$2" ]]; then
-        printf "Cannot resolve %s\n" "$description" >&2
-        printf "Candidates were: %s\n" "$*" | fmt   >&2
+        printf "Cannot resolve %s\n" "$description" >&4
+        printf "Candidates were: %s\n" "$*" | fmt   >&4
         exit 2
     fi
 
@@ -146,10 +160,10 @@ getargs () (
     BAIL () {
         local i; i=$1; shift
         local result; result=$1; shift
-        echo "${i}echo>&2 '$cmd_usage'"
+        echo "${i}echo>&4 '$cmd_usage'"
         local line
         for line in "$@"; do
-            echo "${i}echo>&2 \"$line\""
+            echo "${i}echo>&4 \"$line\""
         done
         echo "${i}exit $result"
     }
@@ -263,8 +277,8 @@ find_single () {
     eval "$(getargs + description ...)"
 
     if [[ $# != 1 ]]; then
-        printf "Cannot resolve %s\n" "$description" >&2
-        printf "Candidates were: %s\n" "$*" | fmt   >&2
+        printf "Cannot resolve %s\n" "$description" >&4
+        printf "Candidates were: %s\n" "$*" | fmt   >&4
         exit 2
     fi
 
@@ -341,7 +355,7 @@ find_student () {
                     return 2
                 ;;
             esac
-        fi >&2
+        fi >&4
     fi
 
     for netid in $netid; do
@@ -425,4 +439,17 @@ show_progress () {
 
 ref_exists () {
     git rev-parse --verify "$1" >/dev/null 2>&1
+}
+
+cass_fatal () {
+    local errcode; errcode=$1; shift
+    echo >&4 "Fatal error (#$errcode): $*"
+    exit $errcode
+}
+
+cass_error () {
+    local errcode; errcode=$1; shift ||
+        cass_fatal 101 'cass_error needs arguments'
+    echo >&4 "Error (#$errcode): $*"
+    return $errcode
 }
