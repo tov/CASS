@@ -32,7 +32,7 @@ docker_start () {
                     --workdir /hw \
                     "$@" \
                     ubuntu-gcc \
-                    sh -c "sleep $docker_time_limit"
+                    sleep $docker_time_limit
             ) || cass_error 10
             docker_kill_on_exit $hash
             CURRENT_BUILD_CONTAINER=$hash
@@ -48,7 +48,7 @@ docker_start () {
                     --workdir /hw/build \
                     "$@" \
                     ubuntu-gcc \
-                    sh -c "sleep $docker_time_limit"
+                    sleep $docker_time_limit
             ) || cass_error 11
             docker_kill_on_exit $hash
             CURRENT_TEST_CONTAINER=$hash
