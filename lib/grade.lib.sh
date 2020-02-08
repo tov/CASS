@@ -335,6 +335,28 @@ check_last_exitcode () {
     esac
 }
 
+assert_warning_absence () {
+    local points; get_points
+    local filename; filename=$1; shift
+
+    local fnb; ccb='<code class=\"filename\">'
+    local fne; cce='</code>'
+
+    local hfilename; hfilename="$fnb$filename$fne"
+    local hbfilename; hbfilename="$fnb$(basename "$filename")$fbe"
+    local pat; pat="^( |[^ ]*: (In function |warning: |note: ))"
+
+    html_test_case "Checking for compilation warnings in $hbfilename"
+    html_p There should not be any warnings when compiling your code.
+
+    if egrep -sq "$pat" "$filename"; then
+        egrep -n "$pat" "$filename" 2>&1 | html_grep_output "$pat" || true
+        score_if false
+    else
+        score_if true
+    fi
+}
+
 assert_function_absence () {
     local points; get_points
     local funname; funname=$1; shift
