@@ -453,3 +453,15 @@ cass_error () {
     echo >&4 "Error (#$errcode): $*"
     return $errcode
 }
+
+publish_dir () {
+    rsync --recursive --links --copy-unsafe-links \
+        $(if [ -f $1/.gitignore ]; then
+            echo "--exclude-from=$1/.gitignore"
+        fi) \
+        --exclude .DS_Store \
+        --exclude '.*.sw?' \
+        --exclude '#*' \
+        --exclude '*~' \
+        $1 $2
+}
