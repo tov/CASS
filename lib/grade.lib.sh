@@ -335,18 +335,20 @@ check_last_exitcode () {
     esac
 }
 
-assert_absence () {
+assert_function_absence () {
     local points; get_points
     local funname; funname=$1; shift
     local filename; filename=$1; shift
 
-    local hfunname="<var>$funname</var>"
-    local hfilename="<code class=\"filename\">$filename</code>"
-    local hbfilename="<code class=\"filename\">$(basename "$filename")</code>"
+    local fnb; ccb='<code class=\"filename\">'
+    local fne; cce='</code>'
+
+    local hfunname; hfunname="<var>$funname</var>"
+    local hfilename; hfilename="$fnb$filename$fne"
+    local hbfilename; hbfilename="$fnb$(basename "$filename")$fbe"
     local pat; pat="(^|[^[:alnum:]])($funname *[(])"
 
     html_test_case "Checking for $hfunname in $hbfilename"
-
     html_p There should not be any calls to function $hfunname \
         in file $hfilename, because $hfilename should not contain code \
         that calls $hfunname directly.
