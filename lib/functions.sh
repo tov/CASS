@@ -455,7 +455,7 @@ cass_error () {
 }
 
 publish_dir () {
-    rsync --recursive --links --copy-unsafe-links \
+    rsync --recursive --links --copy-unsafe-links --times \
         $(if [ -f $1/.gitignore ]; then
             echo "--exclude-from=$1/.gitignore"
         fi) \
