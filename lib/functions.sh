@@ -469,3 +469,18 @@ publish_dir () {
         --exclude '*~' \
         $1 $2
 }
+
+list_submitters () {
+    local hw; hw=$1; shift
+
+    local sort_flags
+    if (( $hw % 2 == 0 )); then
+        sort_flags=-r
+    else
+        sort_flags=
+    fi
+
+    gsc admin submissions hw$hw                |
+        awk '$2 ~ /[[:alnum:]]+/ {print $2}'   |
+        sort $sort_flags
+}
