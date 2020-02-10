@@ -105,7 +105,7 @@ html_io_lines () {
     local tag
     tag="<span class=\"$2\"><span class=\"txt-only\">$1 </span>"
 
-    printf '<code class="io_lines">'
+    printf '<code class="io-lines">'
 
     html_escape | sed -E '
         ${
@@ -124,7 +124,7 @@ html_io_lines () {
     echo '</code>'
 }
 
-ccgo_open='<code class="grep_output">'
+ccgo_open='<code class="grep-output">'
 ccgo_close='</code>'
 ccgo_clopen=$ccgo_close$ccgo_open
 
