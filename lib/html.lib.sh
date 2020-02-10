@@ -43,17 +43,19 @@ html_in_test_case=false
 
 html_try_close_test_case () {
     if $html_in_test_case; then
-        echo '</div></div>'
+        echo '</div></details>'
         html_in_test_case=false
     fi
 }
 
 html_test_case () {
     html_try_close_test_case
-    printf '<div class="test-case">\n'
+    printf '<details class="test-case" open="open">\n'
+    printf '<summary>'
     textf '=====\n'
     textf '===== '
     printf '<h3>%s</h3>\n' "$*"
+    printf '</summary>'
     textf '=====\n'
     printf '<div class="test-case-body">\n'
     html_in_test_case=true
