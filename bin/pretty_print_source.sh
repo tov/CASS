@@ -4,7 +4,9 @@
 
 . "$(dirname "$0")/.CASS"
 
-classify_filetype () {
+eval "$(getargs src dst)"
+
+classify_file () {
     case "$1" in
         *.c|*.h)
             echo c
@@ -21,60 +23,110 @@ classify_filetype () {
         Makefile)
             echo makefile
             ;;
+        CMakeLists.txt|*.cmake)
+            echo cmake
+            ;;
         .*|*.pdf)
             return 1
             ;;
     esac
 }
 
-pp_file () {
-    local filename; filename=$1; shift
-    local filetype; filetype=$(classify_filetype "$filename") || return 0
-    local flag_E
+ensure_final_newline () {
+    sed '1{}' "$@"
+}
 
-    if [ -n "$filetype" ]; then
-        flag_E=-E$filetype
-    else
-        flag_E=
-    fi
+markdown_file () {
+    local filename
+    local filetype
+    local marker
 
-    enscript -o- -MLetter --color $flag_E "$filename"
+    filename=$1; shift
+    filetype=$(classify_file "$filename") || return 0
+
+    marker='````'
+    while grep -q "^$marker\$" "$filename"; do
+        marker='`'$marker
+    done
+
+    printf '# `%s`\n\n' "$filename"
+    printf '%s {.numberLines .%s}\n' "$marker" "${filetype:-unknown}"
+    ensure_final_newline "$filename"
+    printf '%s\n\n' "$marker"
+}
+
+pp_header () {
+    cat <<-····EOF
+	---
+	title: '$title'
+	documentclass: scrartcl
+	papersize: letter
+	fontsize: 12pt
+	geometry:
+	- margin=1in
+	pagestyle: headings
+	numbersections: true
+	toc: true
+	hyperrefoptions:
+	- linktoc=all
+	- pdfwindowui
+	---
+	
+····EOF
 }
 
 pp_tree () {
-    find "$1" -name build -prune \
-           -o -type f -print |
+    pp_header "$1"
+
+    find "$1" \( -name build            \
+              -o -name 'cmake-build-*'  \
+              -o -name '.?*'            \
+              \) -prune                 \
+          -o -type f -print |
+
+          tee -a /dev/tty |
 
     sed 's@^./@@' |
 
     sort |
 
-    while read filename; do
-        pp_file "$filename"
-    done |
-
-    ps2pdf - "$2"
+    (
+        nextpage=
+        while read filename; do
+            printf "$nextpage"
+            markdown_file "$filename"
+            # nextpage='\\newpage\n\n'
+        done
+    )
 }
 
-case "$2" in
+capture_pdf () {
+    pandoc -f markdown          \
+        --standalone            \
+        -o "$1"
+}
+        # --pdf-engine=lualatex   \
+
+case "$dst" in
     [/~]*)
-        dst=$2
         ;;
     *)
-        dst=$(pwd)/$2
+        dst=$(pwd)/$dst
         ;;
 esac
 
-if [ -d "$1" ]; then
-    cd "$1"
+title="$(basename "$src" | tr a-z A-Z)"
+
+if [ -d "$src" ]; then
+    cd "$src"
     src=.
-elif [ -f "$1" ]; then
-    cd "$(dirname "$1")"
-    src=$(basename "$1")
+elif [ -f "$src" ]; then
+    cd "$(dirname "$src")"
+    src=$(basename "$src")
 else
     echo >&2 "$0: Can’t find ‘$1’"
     exit 2
 fi
 
-pp_tree "$src" "$dst"
+pp_tree "$src" | capture_pdf "$dst"
 
