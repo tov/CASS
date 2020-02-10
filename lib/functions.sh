@@ -89,6 +89,10 @@ register_exit_function () {
     CASS_on_exit_list=$*
 }
 
+bc_expr () {
+    echo "$*" | bc -l
+}
+
 assert () {
     local code
     local msg

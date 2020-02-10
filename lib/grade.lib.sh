@@ -27,10 +27,6 @@ grader_on_exit () {
 
 register_exit_function grader_on_exit
 
-bc_expr () {
-    echo "$*" | bc -l
-}
-
 auto_files_to_rm=
 
 run_all_tests () {
