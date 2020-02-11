@@ -66,7 +66,6 @@ pp_header () {
 	- margin=1in
 	pagestyle: headings
 	numbersections: true
-	toc: true
 	hyperrefoptions:
 	- linktoc=all
 	- pdfwindowui
@@ -100,12 +99,24 @@ pp_tree () {
     )
 }
 
-capture_pdf () {
-    pandoc -f markdown          \
-        --standalone            \
-        -o "$1"
+pandoc_options () {
+    echo --standalone
+    case "$1" in
+        *.html)
+            echo --to=html5
+            echo --css=../css/all.css
+            ;;
+        *.pdf)
+            echo --pdf-engine=xelatex
+            echo --toc
+            ;;
+    esac
 }
-        # --pdf-engine=lualatex   \
+
+capture_pdf () {
+    set -x
+    pandoc $(pandoc_options "$1") -o "$1"
+}
 
 case "$dst" in
     [/~]*)
