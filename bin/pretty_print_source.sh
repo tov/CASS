@@ -69,6 +69,10 @@ pp_header () {
 	hyperrefoptions:
 	- linktoc=all
 	- pdfwindowui
+	header-includes:
+	- |
+	  \usepackage{tocloft}
+	  \setlength\cftbeforesecskip{4pt}
 	---
 	
 ····EOF
