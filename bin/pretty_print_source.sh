@@ -78,33 +78,55 @@ pp_header () {
 ····EOF
 }
 
-pp_tree () {
-    pp_header "$1"
-
+find_source_files () {
     find "$1" \( -name build            \
               -o -name 'cmake-build-*'  \
               -o -name '.?*'            \
               \) -prune                 \
-          -o -type f -print |
+          -o -type f -print             |
 
-          tee -a /dev/tty |
+    sed 's@^./@@'                       |
 
-    sed 's@^./@@' |
+    ruby -e '
+        def is_header_for(a, b)
+            a =~ /^(.*[.])h([^.]*)$/ and
+                $1 + "c" + $2 == b
+        end
 
-    sort |
+        lines = $stdin.readlines
 
-    (
-        nextpage=
-        while read filename; do
-            printf "$nextpage"
-            markdown_file "$filename"
-            # nextpage='\\newpage\n\n'
-        done
-    )
+        lines.sort! do |a, b|
+            if is_header_for(a, b)
+                -1
+            elsif is_header_for(b, a)
+                1
+            else
+                a.downcase <=> b.downcase
+            end
+        end
+
+        for line in lines
+            line.sub!(/^[.]\//, "")
+            print(line)
+        end
+    '
+}
+
+pp_tree () {
+    pp_header "$1"
+
+    find_source_files "$1" |
+
+    tee -a /dev/tty |
+
+    while read filename; do
+        markdown_file "$filename"
+    done
 }
 
 pandoc_options () {
     echo --standalone
+
     case "$1" in
         *.html)
             echo --to=html5
@@ -112,6 +134,9 @@ pandoc_options () {
             ;;
         *.pdf)
             echo --pdf-engine=xelatex
+            echo --toc
+            ;;
+        *.tex)
             echo --toc
             ;;
     esac
