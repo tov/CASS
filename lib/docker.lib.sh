@@ -15,10 +15,31 @@ docker_kill_on_exit () {
     docker_kill_on_exit_list=$*
 }
 
+get_docker_image_name () {
+    local kind; kind=$1; shift
+    local lang; lang=$1; shift
+
+    case "$lang" in
+        c)
+            echo cs211-gcc
+            ;;
+        cxx)
+            echo cs211-gxx-$kind
+            ;;
+        *)
+            cass_error 12 "docker_start: unknown lang: $kind" || return
+            ;;
+    esac
+}
+
 docker_start () {
     local kind; kind=$1; shift
+    local lang; lang=$1; shift
     local name; name=$1; shift
+    local image
     local hash
+
+    image=$(get_docker_image_name "$kind" "$lang") || return
 
     case "$kind" in
         build)
@@ -31,7 +52,7 @@ docker_start () {
                     --volume "$(pwd)/build:/hw/build:rw" \
                     --workdir /hw \
                     "$@" \
-                    ubuntu-gcc \
+                    $image \
                     sleep $docker_time_limit
             ) || cass_error 10
             docker_kill_on_exit $hash
@@ -47,7 +68,7 @@ docker_start () {
                     --volume "$(pwd):/hw:ro" \
                     --workdir /hw/build \
                     "$@" \
-                    ubuntu-gcc \
+                    $image \
                     sleep $docker_time_limit
             ) || cass_error 11
             docker_kill_on_exit $hash

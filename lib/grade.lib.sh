@@ -437,3 +437,10 @@ csq () {
     c_quote_string \' "$1"
 }
 
+detect_language () {
+    if [ -f CMakeLists.txt ]; then
+        echo cxx
+    else
+        echo c
+    fi
+}
