@@ -463,6 +463,7 @@ publish_dir () {
         $(if [ -f $1/.gitignore ]; then
             echo "--exclude-from=$1/.gitignore"
         fi) \
+        --exclude ge211 \
         --exclude .DS_Store \
         --exclude '.*.sw?' \
         --exclude '#*' \
