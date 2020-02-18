@@ -459,11 +459,19 @@ cass_error () {
 }
 
 publish_dir () {
+    local args; args=
+
+    if [ "$1" = -G ]; then
+        args='--exclude ge211'
+        shift
+    fi
+
+    if [ -f $1/.gitignore ]; then
+        args="$args --exclude-from=$1/.gitignore"
+    fi
+
     rsync --recursive --links --copy-unsafe-links --times \
-        $(if [ -f $1/.gitignore ]; then
-            echo "--exclude-from=$1/.gitignore"
-        fi) \
-        --exclude ge211 \
+        $args \
         --exclude .DS_Store \
         --exclude '.*.sw?' \
         --exclude '#*' \
