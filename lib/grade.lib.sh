@@ -139,6 +139,10 @@ do_later () {
     } >> "$check_sh"
 }
 
+skip_program_test () {
+    (( ++current_tag ))
+}
+
 program_test () {
     local command;      command=$1; shift
     local realcmd;      realcmd=$command
