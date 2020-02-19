@@ -472,6 +472,7 @@ publish_dir () {
 
     rsync --recursive --links --copy-unsafe-links --times \
         $args \
+        --exclude doc \
         --exclude .DS_Store \
         --exclude '.*.sw?' \
         --exclude '#*' \
