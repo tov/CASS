@@ -3,7 +3,13 @@ format_homework () {
 }
 
 find_team_repo () {
-    echo "$COURSE_VAR/grading/$(format_homework "$1")/$2"
+    local maybe_dot; maybe_dot=
+
+    case "$2" in
+        starter|solution) maybe_dot=.
+    esac
+
+    echo "$COURSE_VAR/grading/$(format_homework "$1")/$maybe_dot$2"
 }
 
 find_existing_file () {
