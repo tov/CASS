@@ -471,12 +471,14 @@ publish_dir () {
     fi
 
     rsync --recursive --links --copy-unsafe-links --times \
-        $args \
-        --exclude doc \
-        --exclude .DS_Store \
-        --exclude '.*.sw?' \
-        --exclude '#*' \
-        --exclude '*~' \
+        $args                   \
+        --exclude doc           \
+        --exclude .DS_Store     \
+        --exclude .git          \
+        --exclude .gitmodules   \
+        --exclude '.*.sw?'      \
+        --exclude '#*'          \
+        --exclude '*~'          \
         $1 $2
 }
 
