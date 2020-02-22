@@ -55,8 +55,8 @@ publish_dir () (
 
     log "${indent}Publishing: ‘%s’ to ‘%s’" "$src" "$dst"
 
-    if [[ -f "$src"/Publish ]]; then
-        make_q "$src" Publish
+    if [[ -f "$src"/Publish ]] || [[ -f "$src/Publish.include" ]]; then
+        make_q "$src"
 
         log "${indent}Evaluating: $src/Publish"
         eval_publish "$src" | while read entry
