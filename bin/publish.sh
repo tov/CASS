@@ -23,13 +23,12 @@ log () {
 }
 
 make_q () {
-    local dir; dir=$1; shift
-    local target; target=$1; shift
-
-    make -C "$dir" "$target" |
-        egrep -v '^make: (?:Nothing to be done for .*|.* is up to date)' ||
+    if [[ -f "$1/Makefile" ]]; then
+        make -C "$1" -j6 $2 |
+            egrep -v '^make: (?:Nothing to be done for .*|.* is up to date)' ||
             true
-        }
+    fi
+}
 
 filter_comments () {
     sed '
