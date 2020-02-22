@@ -143,7 +143,6 @@ pandoc_options () {
 }
 
 capture_pdf () {
-    set -x
     pandoc $(pandoc_options "$1") -o "$1"
 }
 
