@@ -14,9 +14,11 @@ fi
 
 eval_publish () (
     cd "$1"
+
     sed -E '/^[[:space:]]*(#|$)/d' Publish |
-        tr '\n' '\0' |
-        xargs -0 ls -d |
+        while read line
+            do ls -d $line
+        done |
         sort |
         uniq
 )
