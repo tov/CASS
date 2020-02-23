@@ -4,79 +4,52 @@
 
 eval "$(getargs -v src dst)"
 
-eval_publish () {
-    local dir; dir=$1
+if [ -n "$flag_v" ]; then
+    log () {
+        printf "$@" >&2
+    }
+else
+    log () { :; }
+fi
 
-    cat "$dir/Publish"                  |
-        sed '/^[[:space:]]*#/d;
-             /^[[:space:]]*$/d;
-             s/^/ls -d /'               |
-            (cd "$dir"; sh)             |
-            sort                        |
-            uniq
-}
+eval_publish () (
+    cd "$1"
+    sed -E '/^[[:space:]]*(#|$)/d' Publish |
+        tr '\n' '\0' |
+        xargs -0 ls -d |
+        sort |
+        uniq
+)
 
-log () {
-    test -z "$flag_v" && return
-    printf "$@" >&2
-    echo >&2
-}
-
-make_q () {
-    if [[ -f "$1/Makefile" ]]; then
-        make -C "$1" -j6 $2 |
-            egrep -v '^make: (?:Nothing to be done for .*|.* is up to date)' ||
-            true
-    fi
-}
-
-filter_comments () {
-    sed '
-        /^[[:space:]]*#/d
-        /^[[:space:]]*$/d
-    ' "$@"
-}
-
-eval_publish () {
-    local dir; dir=$1
-
-    filter_comments "$dir/Publish" | (
-        cd "$dir"
-        while read line; do
-            ls -d "$line"
-        done
-    ) | sort | uniq
+copy_rec () {
+    mkdir -p "$2"
+    cp -RL "$1" "$2"
 }
 
 publish_dir () (
-    local src; src=$1; shift
-    local dst; dst=$1; shift
-    indent="$*"
+    src=$1; shift
+    dst=$1; shift
+    ind="$*"
 
-    log "${indent}Publishing: ‘%s’ to ‘%s’" "$src" "$dst"
-
-    if [[ -f "$src"/Publish ]] || [[ -f "$src/Publish.include" ]]; then
-        make_q "$src"
-
-        log "${indent}Evaluating: $src/Publish"
-        eval_publish "$src" | while read entry
-        do
-            log "${indent} - Copying: ‘%s’" "$src/$entry"
-            mkdir -p "$dst/$(dirname "$entry")"
-            make_q "$src" "$entry"
-            cp -RL "$src/$entry" "$dst/$(dirname "$entry")"
+    if [[ -f "$src"/Publish ]]; then
+        log '%sPublishing: ‘%s’ to ‘%s’\n' "$ind" "$src" "$dst"
+        log '%s  Copying' "$ind"
+        eval_publish "$src" | while read entry; do
+            log ' %s' "$entry"
+            copy_rec "$src/$entry" "$dst/$(dirname "$entry")"
         done
+        log '.\n'
     fi
 
-    ls "$src" | while read entry
-    do
+    ls "$src" | while read entry; do
         if [[ -d "$src/$entry" ]]; then
-            publish_dir "$src/$entry" "$dst/$entry" "$indent  "
+            publish_dir "$src/$entry" "$dst/$entry" "$ind  "
         fi
     done
 )
 
 if [[ -d "$src" ]]; then
+    make -C "$src" -j6
     publish_dir "$src" "$dst"
 else
     echo>&2 "$(basename "$0"): Don’t know what to do with ‘$src’"
