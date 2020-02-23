@@ -460,14 +460,50 @@ cass_error () {
 
 publish_dir () {
     local args; args=
+    local deps; deps=false
 
-    if [ "$1" = -G ]; then
-        args='--exclude ge211'
-        shift
-    fi
+    while true; do
+        case "$1" in
+            -G)
+                args="$args --exclude ge211"
+                shift
+                ;;
+            -d)
+                args="$args --verbose --dry-run"
+                deps=true
+                shift
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
 
     if [ -f $1/.gitignore ]; then
         args="$args --exclude-from=$1/.gitignore"
+    fi
+
+    if [ $# != 2 ]; then
+        echo >&4 "Usage: publish_dir [-d] [-G] SRC DST"
+        return 1
+    fi
+
+    local src; src=$1; shift
+    local dst; dst=$1; shift
+    local fixup; fixup=
+
+    if $deps; then
+        fixup="
+            1,2d
+            /^\$/,\$d
+            s| -> .*||
+            s|^|$dst: |
+        "
+        dst=/tmp/bogus
     fi
 
     rsync --recursive --links --copy-unsafe-links --times \
@@ -478,8 +514,10 @@ publish_dir () {
         --exclude .gitmodules   \
         --exclude '.*.sw?'      \
         --exclude '#*'          \
+        --exclude '$*'          \
         --exclude '*~'          \
-        $1 $2
+        "$src" "$dst"           |
+    sed "$fixup"
 }
 
 list_submitters () {
