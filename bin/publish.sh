@@ -5,11 +5,9 @@
 eval "$(getargs -v src dst)"
 
 if [ -n "$flag_v" ]; then
-    log () {
-        printf "$@" >&2
-    }
+    alias log='printf >&2'
 else
-    log () { :; }
+    alias log=:
 fi
 
 eval_publish () (
