@@ -112,17 +112,17 @@ find_source_files () {
     '
 }
 
-pp_tree () {
-    pp_header "$1"
+pp_tree () (
+    cd "$1"
 
-    find_source_files "$1" |
+    pp_header "$2"
 
-    tee -a /dev/tty |
-
+    find_source_files "$2"      |
+    tee -a /dev/tty             |
     while read filename; do
         markdown_file "$filename"
     done
-}
+)
 
 pandoc_options () {
     echo --standalone
@@ -146,26 +146,18 @@ capture_pdf () {
     pandoc $(pandoc_options "$1") -o "$1"
 }
 
-case "$dst" in
-    [/~]*)
-        ;;
-    *)
-        dst=$(pwd)/$dst
-        ;;
-esac
-
 title="$(basename "$src" | tr a-z A-Z)"
 
 if [ -d "$src" ]; then
-    cd "$src"
+    dir=$src
     src=.
 elif [ -f "$src" ]; then
-    cd "$(dirname "$src")"
+    dir=$(dirname "$src")
     src=$(basename "$src")
 else
     echo >&2 "$0: Can’t find ‘$1’"
     exit 2
 fi
 
-pp_tree "$src" | capture_pdf "$dst"
+pp_tree "$dir" "$src" | capture_pdf "$dst"
 
