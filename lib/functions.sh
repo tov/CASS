@@ -458,6 +458,13 @@ cass_error () {
     return $errcode
 }
 
+FIXUP_TEMPLATE='
+    1,2d
+    /^$/,$d
+    s| -> .*||
+    s|^|%s: |
+'
+
 publish_dir () {
     local args; args=
     local deps; deps=false
@@ -492,17 +499,12 @@ publish_dir () {
         return 1
     fi
 
-    local src; src=$1; shift
-    local dst; dst=$1; shift
-    local fixup; fixup=
+    local src; src=$1
+    local dst; dst=$2
 
+    local deps_fixup; deps_fixup=
     if $deps; then
-        fixup="
-            1,2d
-            /^\$/,\$d
-            s| -> .*||
-            s|^|$dst: |
-        "
+        deps_fixup=$(printf "$FIXUP_TEMPLATE" "$dst")
         dst=/tmp/bogus
     fi
 
@@ -517,7 +519,7 @@ publish_dir () {
         --exclude '$*'          \
         --exclude '*~'          \
         "$src" "$dst"           |
-    sed "$fixup"
+    sed "$deps_fixup"
 }
 
 list_submitters () {
