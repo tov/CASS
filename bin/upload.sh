@@ -18,15 +18,8 @@ remove_tempdir () {
 }
 
 assert_branch () {
-    local dir
-    local desired
     local actual
-
-    eval "$(getargs dir desired)"
-
-    if ! [[ -d "$dir" ]]; then
-        return
-    fi
+    eval "$(getargs + dir desired)"
 
     actual=$(cd "$dir" && git symbolic-ref HEAD) || exit 1
 
@@ -61,8 +54,11 @@ upload_website () {
 
 cd "$COURSE_ROOT"
 
-assert_branch .       refs/heads/master
-assert_branch web/lab refs/heads/master
+assert_branch .             refs/heads/master
+assert_branch dev/lab       refs/heads/master
+assert_branch dev/ge211     refs/heads/master
+assert_branch dev/catch     refs/heads/master
+assert_branch lib/dot-cs211 refs/heads/master
 
 if [[ -n "$flag_m$flag_W" ]]; then
     upload_man_pages
