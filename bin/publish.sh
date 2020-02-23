@@ -2,7 +2,11 @@
 
 . "$(dirname "$0")/.CASS"
 
-eval "$(getargs -v src dst)"
+eval "$(getargs -Jv src dst)"
+
+if [ -z "$flag_J" ]; then
+    alias make='make -j6'
+fi
 
 if [ -n "$flag_v" ]; then
     alias log='printf >&2'
@@ -49,7 +53,7 @@ publish_dir () (
 )
 
 if [[ -d "$src" ]]; then
-    make -C "$src" -j6
+    make -C "$src"
     publish_dir "$src" "$dst"
 else
     echo>&2 "$(basename "$0"): Don’t know what to do with ‘$src’"
