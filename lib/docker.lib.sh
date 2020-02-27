@@ -15,31 +15,11 @@ docker_kill_on_exit () {
     docker_kill_on_exit_list=$*
 }
 
-get_docker_image_name () {
-    local kind; kind=$1; shift
-    local lang; lang=$1; shift
-
-    case "$lang" in
-        c)
-            echo cs211-gcc
-            ;;
-        cxx)
-            echo cs211-gxx-$kind
-            ;;
-        *)
-            cass_error 12 "docker_start: unknown lang: $kind" || return
-            ;;
-    esac
-}
-
 docker_start () {
     local kind; kind=$1; shift
-    local lang; lang=$1; shift
     local name; name=$1; shift
-    local image
+    local image; image=cs211-$kind
     local hash
-
-    image=$(get_docker_image_name "$kind" "$lang") || return
 
     case "$kind" in
         build)
