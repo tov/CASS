@@ -268,10 +268,10 @@ team_members () {
     echo "$*" | sed 's/-/ /g'
 }
 
-all_netids () {
+all_netids () (
     cd "$COURSE_DB/students"
     ls
-}
+)
 
 netid_exists () {
     test -d "$COURSE_DB/students/$1"
