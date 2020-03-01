@@ -274,7 +274,8 @@ all_netids () (
 )
 
 netid_exists () {
-    test -d "$COURSE_DB/students/$1"
+    test -n "$1" &&
+        test -d "$COURSE_DB/students/$1"
 }
 
 find_single () {
