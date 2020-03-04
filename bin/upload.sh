@@ -21,7 +21,10 @@ assert_branch () {
     local actual
     eval "$(getargs + dir desired)"
 
-    actual=$(cd "$dir" && git symbolic-ref HEAD) || exit 1
+    actual=$(cd "$dir" && git symbolic-ref HEAD) || {
+        echo >&2 "repo in $dir"
+        exit 1
+    }
 
     if [[ "$actual" != "$desired" ]]; then
         exec >&2
