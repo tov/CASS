@@ -46,6 +46,7 @@ docker_start () {
                     --rm --read-only --init --detach \
                     --tmpfs /tmp \
                     --volume "$(pwd):/hw:ro" \
+                    --volume "$(pwd)/out:/out:rw" \
                     --workdir /hw/build \
                     "$@" \
                     $image \
