@@ -318,14 +318,14 @@ check_last_exitcode () {
             html_errorhead Timeout Error
             html_p Your code was still running after \
                 $COURSE_GRADE_TIMEOUT s, so I killed it.
-            html_p You likely have an infinite loop.
+            html_p You might have an infinite loop.
             ;;
 
         125)
             html_errorhead Excessive Output Error
             html_p Your code produced more than $COURSE_MAX_OUTPUT \
                 bytes of output, so I killed it.
-            html_p You likely have an infinite loop.
+            html_p You might have an infinite loop.
             ;;
 
         *)
