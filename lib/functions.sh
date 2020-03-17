@@ -537,3 +537,21 @@ list_submitters () {
         awk '$2 ~ /[[:alnum:]]+/ {print $2}'   |
         sort $sort_flags
 }
+
+get_line_indent () {
+    printf '%s' "$1" | expand | sed 's/[^ ].*//' | tr -d '\n'
+}
+
+unindent () {
+    local line
+    local script
+
+    line=$(head -1)
+    script="s/^$(get_line_indent "$line")//;$1"
+
+    {
+        printf '%s\n' "$line"
+        cat
+    } | expand | sed -E "$script"
+}
+
