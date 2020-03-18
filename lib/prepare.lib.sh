@@ -10,7 +10,7 @@ restore_starter_files () (
 restore_starter_files_from () {
     find "$1/$2" -type f | while read file; do
         if head -2 "$file" | fgrep -q "$NO_CHANGE_MARKER"; then
-            cp "$file" "$1/"
+            cp "$file" "$2/"
         fi
     done
 }
