@@ -1,46 +1,35 @@
-format_homework () {
-    printf "hw%02d\n" "$1"
+# Helpers for finding stuff
+
+HW_BASE=$COURSE_ROOT/dev/hw
+REPO_BASE=$COURSE_VAR/grading
+
+find_homework () {
+    printf "%s/%02d" "$HW_BASE" "$1"
 }
 
 find_team_repo () {
-    local maybe_dot; maybe_dot=
+    printf '%s/hw%02d/%s' "$REPO_BASE" "$1" "$(netid_dirname "$2")"
+}
 
-    case "$2" in
-        starter|solution) maybe_dot=.
+find_homework_script () {
+    printf "%s/grader/%s_this" "$(find_homework "$1")" "$2"
+}
+
+format_homework () {
+    printf "hw%02d" "$1"
+}
+
+netid_dirname () {
+    if netid_is_special "$1"; then
+        printf .%s "$1"
+    else
+        printf %s "$1"
+    fi
+}
+
+netid_is_special () {
+    case "$1" in
+        starter|solution) true;;
+        *) false;;
     esac
-
-    echo "$COURSE_VAR/grading/$(format_homework "$1")/$maybe_dot$2"
-}
-
-find_existing_file () {
-    local file
-
-    for file; do
-        if [ -f "$file" ]; then
-            echo $file
-            return
-        fi
-    done
-}
-
-find_homework_base () {
-    printf "%s/dev/hw/%02d\n" "$COURSE_ROOT" "$1"
-}
-
-find_homework_test_repo () {
-    printf "%s/dev/hw/test/%s-hw%02d\n" "$COURSE_ROOT" "$2" "$1"
-}
-
-find_grading_script () {
-    local hw; hw=$(format_homework "$1")
-    find_existing_file \
-        "$COURSE_LIB/grading/$hw/grade_this" \
-        "$COURSE_LIB/grading/grade_this_$hw"
-}
-
-find_preparation_script () {
-    local hw; hw=$(format_homework "$1")
-    find_existing_file \
-        "$COURSE_LIB/grading/$hw/prepare_this" \
-        "$COURSE_LIB/grading/prepare_this_$hw"
 }
