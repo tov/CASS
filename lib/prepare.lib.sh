@@ -48,6 +48,11 @@ generate_install_sh_helper () (
 
         install_bins () {
             for file; do
+                if ! [ -x "$file" ]; then
+                    echo >&2 "$0: skipping missing binary: $file"
+                    continue
+                fi
+
                 mkdir -p "$dst"
                 install -m 755 "build/$file" "$dst"
                 ln -s "bin/$file" "$HOME/"
