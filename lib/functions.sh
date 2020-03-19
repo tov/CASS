@@ -555,3 +555,16 @@ unindent () {
     } | expand | sed -E "$script"
 }
 
+short_prog_name () {
+    local full; full=${1-$0}
+    local base; base=${full##*/}
+
+    if [ "$COURSE_BIN/$base" = "$full" ] ||
+       [ "$(which "$base" 2>/dev/null)" = "$full" ];
+    then
+        printf %s "$base"
+    else
+        printf %s "$full"
+    fi
+}
+
