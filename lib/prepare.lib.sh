@@ -48,7 +48,7 @@ generate_install_sh_helper () (
 
         install_bins () {
             for file; do
-                if ! [ -x "$file" ]; then
+                if ! [ -x "build/$file" ]; then
                     echo >&2 "$0: skipping missing binary: $file"
                     continue
                 fi
