@@ -32,7 +32,7 @@ repair_starter_file () (
     {
         sed "${marker_line}q"   $original
         sed "1,${marker_line}d" $saved
-    } > $saved
+    } > $file
 )
 
 generate_install_sh () {
