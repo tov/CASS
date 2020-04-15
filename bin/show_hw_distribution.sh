@@ -2,7 +2,7 @@
 
 . "$(dirname "$0")/.CASS"
 
-# Shows the autograder grade distribution for hw$hw.
+# Shows the automated-test grade distribution for hw$hw.
 #
 #  -P           don't multiply scores by points possible
 

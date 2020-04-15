@@ -1,7 +1,7 @@
 # Helpers for finding stuff
 
 HW_BASE=$COURSE_ROOT/dev/hw
-REPO_BASE=$COURSE_VAR/grading
+REPO_BASE=$COURSE_VAR/testing
 
 find_homework () {
     printf "%s/%02d" "$HW_BASE" "$1"
@@ -12,7 +12,7 @@ find_team_repo () {
 }
 
 find_homework_script () {
-    printf "%s/grader/%s_this" "$(find_homework "$1")" "$2"
+    printf "%s/tester/%s_this" "$(find_homework "$1")" "$2"
 }
 
 format_homework () {

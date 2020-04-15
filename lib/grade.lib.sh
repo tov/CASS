@@ -19,13 +19,13 @@ course_use docker html points
 # TODO: remove?
 course_use find
 
-grader_on_exit () {
+tester_on_exit () {
     if $html_in_test_case; then
         print_points_summary
     fi
 }
 
-register_exit_function grader_on_exit
+register_exit_function tester_on_exit
 
 auto_files_to_rm=
 
