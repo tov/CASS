@@ -26,7 +26,7 @@ classify_file () {
         CMakeLists.txt|*.cmake)
             echo cmake
             ;;
-        .*|*.pdf)
+        .*|*.pdf|a.out)
             return 1
             ;;
     esac
@@ -81,9 +81,12 @@ pp_header () {
 find_source_files () {
     find "$1" \( -name build            \
               -o -name 'cmake-build-*'  \
+              -o -name '*.dSYM'         \
+              -o -name '*.o'            \
+              -o -name '*.opt'          \
               -o -name '.?*'            \
               \) -prune                 \
-          -o -type f -print             |
+          -o -type f -name '*.*' -print |
 
     sed 's@^./@@'                       |
 
