@@ -13,4 +13,5 @@ while read netid email name; do
     "$COURSE_BIN"/set_student_property.sh -c "$netid" email "$email"
     "$COURSE_BIN"/set_student_property.sh "$netid" last "$last"
     "$COURSE_BIN"/set_student_property.sh "$netid" first "$first"
+    print_student_info "$netid"
 done
