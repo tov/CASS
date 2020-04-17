@@ -28,8 +28,7 @@ docker_start () {
                     --name "$name" \
                     --rm --read-only --init --detach \
                     --tmpfs /tmp \
-                    --volume "$(pwd):/hw:ro" \
-                    --volume "$(pwd)/build:/hw/build:rw" \
+                    --volume "$(pwd):/hw:rw" \
                     --workdir /hw \
                     "$@" \
                     $image \
@@ -47,7 +46,7 @@ docker_start () {
                     --tmpfs /tmp \
                     --volume "$(pwd):/hw:ro" \
                     --volume "$(pwd)/out:/out:rw" \
-                    --workdir /hw/build \
+                    --workdir "/hw$(! test -d build || echo /build)" \
                     "$@" \
                     $image \
                     sleep $docker_time_limit
