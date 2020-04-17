@@ -1,7 +1,7 @@
 # Helpers for finding stuff
 
 HW_BASE=$COURSE_ROOT/dev/hw
-REPO_BASE=$COURSE_VAR/testing
+REPO_BASE=$COURSE_VAR/grading
 
 find_homework () {
     printf "%s/%02d" "$HW_BASE" "$1"
