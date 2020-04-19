@@ -3,8 +3,8 @@
 find_course_root () {
     cd "$(dirname $0)"
 
-    while ! [[ -f .root ]]; do
-        if [[ "$(pwd)" = / ]]; then
+    while ! [ -f .root ]; do
+        if [ "$(pwd)" = / ]; then
             echo >&2 Could not find course root
             exit 3
         fi
