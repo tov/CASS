@@ -86,10 +86,6 @@ publish_dir () {
     fi
 
     local src; src=$1; shift
-    while [ -L "$src" ]; do
-        src=$(readlink "$src")
-    done
-
     local dst
     local deps_fixup
     if $deps; then
@@ -100,7 +96,7 @@ publish_dir () {
         deps_fixup=
     fi
 
-    rsync --recursive --links --copy-unsafe-links --times \
+    rsync --recursive --copy-links --times \
         $args                   \
         --exclude a.out         \
         --exclude doc           \
