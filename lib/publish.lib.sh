@@ -79,18 +79,25 @@ publish_dir () {
         args="$args --exclude-from=$1/.gitignore"
     fi
 
-    if [ $# != 2 ]; then
-        echo >&4 "Usage: publish_dir [-d] [-G] SRC DST"
+    if ( $deps && [ $# -lt 2 ] ) || ( ! $deps && [ $# != 2 ] ); then
+        echo >&4 "Usage: publish_dir [-G]    SRC DST"
+        echo >&4 "Usage: publish_dir [-G] -d SRC DST..."
         return 1
     fi
 
-    local src; src=$1
-    local dst; dst=$2
+    local src; src=$1; shift
+    while [ -L "$src" ]; do
+        src=$(readlink "$src")
+    done
 
-    local deps_fixup; deps_fixup=
+    local dst
+    local deps_fixup
     if $deps; then
-        deps_fixup=$(printf "$FIXUP_TEMPLATE" "$dst")
         dst=/tmp/bogus
+        deps_fixup=$(printf "$FIXUP_TEMPLATE" "$*")
+    else
+        dst=$1
+        deps_fixup=
     fi
 
     rsync --recursive --links --copy-unsafe-links --times \
