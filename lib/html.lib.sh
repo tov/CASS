@@ -119,7 +119,8 @@ html_io_lines () {
         }
         s@'"$del_char"'@<span class="control-char">\\x7F</span>@g
         s@.*@'"$tag"'&</span>@
-    '
+    ' | iconv  --byte-subst='<span class="invalid-byte">\x%X</span>' \
+            -f UTF-8 -t UTF-8
 
     echo '</code>'
 }
