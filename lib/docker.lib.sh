@@ -33,7 +33,7 @@ try_docker_start () {
                     "$@" \
                     $image \
                     sleep $docker_time_limit
-            ) || cass_error 10
+            ) || return 1
             docker_kill_on_exit $hash
             CURRENT_BUILD_CONTAINER=$hash
             export CURRENT_BUILD_CONTAINER
@@ -50,7 +50,7 @@ try_docker_start () {
                     "$@" \
                     $image \
                     sleep $docker_time_limit
-            ) || cass_error 11
+            ) || return 1
             docker_kill_on_exit $hash
             CURRENT_TEST_CONTAINER=$hash
             export CURRENT_TEST_CONTAINER
@@ -78,7 +78,7 @@ docker_start () {
         } >&2
     done 2>&4
 
-    cass_fatal 99 "Couldn't start docker after $attempts tries"
+    cass_error 99 "Couldn't start docker after $attempts tries"
 }
 
 get_current_container_var () {

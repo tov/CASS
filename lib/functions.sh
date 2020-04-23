@@ -82,7 +82,7 @@ CASS_on_exit () {
     done
 }
 
-trap CASS_on_exit EXIT
+trap CASS_on_exit EXIT INT QUIT
 
 register_exit_function () {
     set -- $CASS_on_exit_list $*
