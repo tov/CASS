@@ -15,7 +15,7 @@ docker_kill_on_exit () {
     docker_kill_on_exit_list=$*
 }
 
-docker_start () {
+try_docker_start () {
     local kind; kind=$1; shift
     local name; name=$1; shift
     local image; image=cs211-$kind
@@ -59,6 +59,26 @@ docker_start () {
             cass_error 12 "docker_start: unknown kind: $kind" || return
             ;;
     esac
+}
+
+docker_start () {
+    local attempts; attempts=${DOCKER_START_ATTEMPTS:-5}
+    local attempt_number
+    for attempt_number in $(seq $attempts); do
+        if try_docker_start "$@"; then
+            return
+        fi
+
+        {
+            echo "Warning: Couldn't start docker"
+            docker ps -a
+            echo "Sleeping $attempt_number seconds..."
+            sleep $attempt_number
+            echo "Trying again..."
+        } >&2
+    done 2>&4
+
+    cass_fatal 99 "Couldn't start docker after $attempts tries"
 }
 
 get_current_container_var () {
