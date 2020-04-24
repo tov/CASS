@@ -119,10 +119,19 @@ html_io_lines () {
         }
         s@'"$del_char"'@<span class="control-char">\\x7F</span>@g
         s@.*@'"$tag"'&</span>@
-    ' | iconv  --byte-subst='<span class="invalid-byte">\x%X</span>' \
-            -f UTF-8 -t UTF-8
+    ' | sanitize_utf8
 
     echo '</code>'
+}
+
+sanitize_utf8 () {
+    if which uconv >/dev/null 2>&1; then
+        uconv --callback escape-unicode \
+              -f UTF-8 -t UTF-8
+    else
+        iconv --byte-subst='<span class="invalid-byte">\x%X</span>' \
+              -f UTF-8 -t UTF-8
+    fi
 }
 
 ccgo_open='<code class="grep-output">'
