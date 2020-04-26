@@ -421,11 +421,11 @@ print_points_summary () {
 c_quote_string () {
     printf '%s\n' "$2"          |
         sed -E '
-            s/\\/&&&&/g
-            s/'"$1"'/\\\\&/g
-            s/	/\\\\t/g
-            s/'"$del_char"'/\\\\x7F/g
-            2,$s/^/\\\\n/
+            s/\\/&&/g
+            s/'"$1"'/\\&/g
+            s/	/\\t/g
+            s/'"$del_char"'/\\x7F/g
+            2,$s/^/\\n/
             1s/^/'"$1"'/
             $s/$/'"$1"'/
         '                       |

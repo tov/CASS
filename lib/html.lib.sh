@@ -35,7 +35,7 @@ textf () {
 }
 
 html_p () {
-    echo "<p>$*</p>" | fmt
+    printf '<p>%s</p>\n' "$*" | fmt
     echo
 }
 
