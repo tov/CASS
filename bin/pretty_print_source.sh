@@ -29,6 +29,12 @@ classify_file () {
         .*|*.pdf|a.out)
             return 1
             ;;
+        *.*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
     esac
 }
 
