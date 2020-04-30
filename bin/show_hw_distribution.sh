@@ -44,7 +44,7 @@ possible_points () {
 read_scores () {
     while read test_log; do
         tail -1 "$test_log"
-    done
+    done | grep -v '^-$'
 }
 
 format_scores () {
