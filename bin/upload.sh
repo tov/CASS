@@ -59,7 +59,7 @@ cd "$COURSE_ROOT"
 
 assert_branch .             refs/heads/master
 assert_branch dev/lab       refs/heads/master
-assert_branch dev/ge211     refs/heads/master
+assert_branch dev/ge211     refs/heads/release
 assert_branch dev/catch     refs/heads/master
 assert_branch lib/dot-cs211 refs/heads/master
 
