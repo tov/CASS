@@ -1,17 +1,17 @@
 #!/bin/sh
 
 . "$(dirname "$0")/.CASS"
+course_use find
 
 # Shows the automated-test grade distribution for hw$hw.
 #
-#  -P           don't multiply scores by points possible
+#  -P           show raw points, not percentages
+#  -r           reverse order (highest scores first)
 
 process_arguments () {
-    eval "$(getargs -P hw)"
+    eval "$(getargs -Pr hw)"
 
-    cd "$(printf %s/grading/hw%02d "$COURSE_VAR" "$hw")"
-
-    if [ -n "$flag_P" ]; then
+    if [ -z "$flag_P" ]; then
         format='%5.1f%%\n'
         points=100
     else
@@ -21,45 +21,45 @@ process_arguments () {
 }
 
 find_logs () (
-    for netid; do
-        log=$netid/tests.log
-        if [ -d "$netid" ] && [ -f "$log" ]; then
+    all_netids | while read netid; do
+        repo=$(find_team_repo $hw $netid)
+        log=$repo/tests.log
+        if [ -d "$repo" ] && [ -f "$log" ]; then
             echo "$log"
         fi
     done
 )
 
 possible_points () {
-    find_logs * |
-        while read test_log; do
-            cat "$test_log"
-        done |
-        sed -E '
-            /^Points possible: *([0-9]*) *$/!d
-            s//\1/
-        ' |
-        head -1
+    sed -E '
+        /^Points possible: *([0-9]*) *$/!d
+        s//\1/
+    ' "$(find_team_repo $hw starter)/tests.log" | head -1
 }
 
 read_scores () {
     while read test_log; do
         tail -1 "$test_log"
-    done | grep -v '^-$'
+    done
 }
 
 format_scores () {
     while read score; do
-        printf "$format" "$(bc_expr "$points * $score")"
+        if [ "$score" = - ]; then
+            printf '%s\n' ---
+        else
+            printf "$format" "$(bc_expr "$points * $score")"
+        fi
     done
 }
 
 build_histogram () {
-    sort -n | uniq -c
+    sort $flag_r -n | uniq -c
 }
 
 process_arguments "$@"
 
-find_logs *     |
+find_logs       |
 read_scores     |
 format_scores   |
 build_histogram
