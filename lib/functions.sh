@@ -76,13 +76,24 @@ course_init_env () {
 }
 
 CASS_on_exit () {
+    if [ -n "$2" ]; then
+        echo >&4 "$0: got SIG$2, shutting down"
+    fi
+
     for cmd in $CASS_on_exit_list; do
         $cmd ||
             echo >&4 "CASS_on_exit: $cmd returned $?"
     done
+    CASS_on_exit_list=
+
+    if [ -n "$1" ]; then
+        exit $1
+    fi
 }
 
-trap CASS_on_exit EXIT INT QUIT
+trap CASS_on_exit               EXIT
+trap 'CASS_on_exit 130 INT'     INT
+trap 'CASS_on_exit 131 QUIT'    QUIT
 
 register_exit_function () {
     set -- $CASS_on_exit_list $*
