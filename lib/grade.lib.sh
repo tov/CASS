@@ -4,10 +4,6 @@
 : ${COURSE_MAX_OUTPUT:=10000}
 export COURSE_GRADE_TIMEOUT COURSE_MAX_OUTPUT
 
-build_log=build.log
-tests_log=tests.log
-tests_hlog=tests.hlog
-
 lf_char='
 '
 del_char=$(printf '\x7F')
