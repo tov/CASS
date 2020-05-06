@@ -50,7 +50,7 @@ run_all_tests () {
             command=$(cat "$stem.cmd")
         else
             command=$(basename "$stem" |
-                sed -E 's/-[[:digit:]]*$//; s/@/ /g')
+                ubsed -E 's/-[[:digit:]]*$//; s/@/ /g')
         fi
 
         if [ -f "$stem.out" ]; then
@@ -420,7 +420,7 @@ print_points_summary () {
 
 c_quote_string () {
     printf '%s\n' "$2"          |
-        sed -E '
+        ubsed -E '
             s/\\/&&/g
             s/'"$1"'/\\&/g
             s/	/\\t/g

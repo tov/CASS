@@ -1,7 +1,7 @@
 # HTML output for grading.
 
 html_escape () {
-    sed -E '
+    ubsed -E '
         s@&@\&amp;@g
         s@<@\&lt;@g
         s@>@\&gt;@g
@@ -21,7 +21,7 @@ sed_html_untag_prog='
 '
 
 unhtml () {
-    sed "$@" -E "
+    ubsed "$@" -E "
         $sed_html_unescape_prog
         $sed_html_untag_prog
     "
@@ -107,7 +107,7 @@ html_io_lines () {
 
     printf '<code class="io-lines">'
 
-    html_escape | sed -E '
+    html_escape | ubsed -E '
         ${
             /^%$/d
             s@%$@<span class="no-newline">%</span>@
@@ -163,6 +163,6 @@ html_grep_output () {
     '
 
     printf "$ccgo_open"
-    html_escape | sed -E "$sedprog"
+    html_escape | ubsed -E "$sedprog"
     printf "$ccgo_close"
 }

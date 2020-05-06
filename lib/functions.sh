@@ -499,7 +499,7 @@ unindent () {
     {
         printf '%s\n' "$line"
         cat
-    } | expand | sed -E "$script"
+    } | expand | ubsed -E "$script"
 }
 
 short_prog_name () {
