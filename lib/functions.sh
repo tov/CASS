@@ -515,3 +515,24 @@ short_prog_name () {
     fi
 }
 
+find_gnu_sed () {
+    local candidate
+    for candidate; do
+        if  GNU_SED=$(which $candidate) &&
+            [ -x "$GNU_SED" ] &&
+            "$GNU_SED" --unbuffered '' </dev/null
+        then
+            return 0
+        fi
+    done
+
+    unset GNU_SED
+
+    cass_error 17 'could not find GNU sed'
+}
+
+find_gnu_sed gsed sed
+
+ubsed () {
+    "$GNU_SED" --unbuffered "$@"
+}
