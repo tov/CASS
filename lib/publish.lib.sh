@@ -97,6 +97,10 @@ publish_dir () {
     fi
 
     rsync --recursive --copy-links --times \
+        --include misc.xml              \
+        --include workspace.xml         \
+        --include codeStyles            \
+        --include inspectionProfiles    \
         $args                   \
         --exclude a.out         \
         --exclude doc           \
