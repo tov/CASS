@@ -33,6 +33,6 @@ load_cass_please () {
     ( exec 5>&4 ) 2>/dev/null || exec 4>&2
 }
 
-if [ -z "$course_cass" ]; then
+if [ -z "${course_cass-}" ]; then
     load_cass_please
 fi

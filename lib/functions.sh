@@ -75,8 +75,9 @@ course_init_env () {
     done
 }
 
+CASS_on_exit_list=
 CASS_on_exit () {
-    if [ -n "$2" ]; then
+    if [ -n "${2-}" ]; then
         echo >&4 "$0: got SIG$2, shutting down"
     fi
 
@@ -86,7 +87,7 @@ CASS_on_exit () {
     done
     CASS_on_exit_list=
 
-    if [ -n "$1" ]; then
+    if [ -n "${1-}" ]; then
         exit $1
     fi
 }
@@ -128,7 +129,7 @@ assert () {
 find_single () {
     eval "$(getargs + description ...)"
 
-    if [[ -z "$1" ]] || [[ -n "$2" ]]; then
+    if [ -z "${1-}" ] || [ -n "${2-}" ]; then
         printf "Cannot resolve %s\n" "$description" >&4
         printf "Candidates were: %s\n" "$*" | fmt   >&4
         exit 2
@@ -148,28 +149,28 @@ getargs () (
         '+'*)
             cmd=${1#+}; shift
             define_var () {
-                echo "local $1; $1=$2"
+                echo "local $1; $1=${2-}"
             }
             ;;
         *)
             cmd=$0
             define_var () {
-                echo "$1=$2"
+                echo "$1=${2-}"
             }
             ;;
     esac
 
     flags=
-    while expr "Z$1" : Z- >/dev/null; do
+    while expr "Z${1-}" : Z- >/dev/null; do
         flags=$flags${1#-}
         shift
     done
 
-    ARGS=$(printf '%s' "$*" | tr a-z A-Z)
-    if [[ -n "$cmd" ]]; then
-        cmd_usage="Usage: $cmd${flags+ -$flags} $ARGS"
+    ARGS=$(printf %s "$*" | tr a-z A-Z)
+    if [ -n "${cmd-}" ]; then
+        cmd_usage="Usage: $cmd${flags:+ -$flags} $ARGS"
     else
-        cmd_usage="$0: bad shell call (context: -$flags $args)"
+        cmd_usage="$0: bad shell call (context: -$flags $ARGS)"
     fi
 
     BAIL () {
