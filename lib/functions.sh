@@ -186,7 +186,8 @@ getargs () (
 
     if [ -n "$flags" ]; then
         define_var actual_given_flag
-        for flag in $(explode_words $flags); do
+        local exploded; explode_words=$(explode_words $flags)
+        for flag in $exploded; do
             define_var flag_$flag
         done
         echo 'while [ $# -gt 0 ]; do'
@@ -196,7 +197,7 @@ getargs () (
         echo '    -*)'
         echo '      for actual_given_flag in $(explode_words ${1#-}); do'
         echo '        case "$actual_given_flag" in'
-        for flag in $(explode_words $flags); do
+        for flag in $exploded; do
             echo "          $flag) flag_$flag=-$flag ;;"
         done
         echo '          *)'
