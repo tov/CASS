@@ -35,7 +35,7 @@ did () {
 }
 
 current_millis () {
-    gdate +%s%03N
+    date +%s%03N
 }
 
 elapsed_since () {

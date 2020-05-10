@@ -515,24 +515,56 @@ short_prog_name () {
     fi
 }
 
-find_gnu_sed () {
+sed_has_unbuffered () {
+    "$1" --unbuffered '' </dev/null
+}
+
+sed_has_l_flag () {
+    "$1" -l '' </dev/null
+}
+
+date_has_pctN () {
+    case "$($1 +%N)" in
+        *N) false;;
+        *)  true;;
+    esac
+}
+
+find_unbuffered_sed () {
     local candidate
     for candidate; do
-        if  GNU_SED=$(which $candidate) &&
-            [ -x "$GNU_SED" ] &&
-            "$GNU_SED" --unbuffered '' </dev/null
-        then
+        candidate=$(which $candidate) || continue
+        if sed_has_unbuffered $candidate; then
+            UNBUFFERED_SED="$candidate --unbuffered"
+            return 0
+        elif sed_has_l_flag $candidate; then
+            UNBUFFERED_SED="$candidate -l"
             return 0
         fi
     done
 
-    unset GNU_SED
-
-    cass_error 17 'could not find GNU sed'
+    cass_error 17 'could not find sed with unbuffered option'
 }
 
-find_gnu_sed gsed sed
+find_pctN_date () {
+    local candidate
+    for candidate; do
+        candidate=$(which $candidate) || continue
+        if date_has_pctN $candidate; then
+            PCT_N_DATE=$candidate
+            return 0
+        fi
+    done
 
+    cass_error 18 'could not find date with %N support'
+}
+
+find_unbuffered_sed gsed sed
 ubsed () {
-    "$GNU_SED" --unbuffered "$@"
+    $UNBUFFERED_SED "$@"
+}
+
+find_pctN_date gdate date
+date () {
+    $PCT_N_DATE "$@"$gnu_date
 }
