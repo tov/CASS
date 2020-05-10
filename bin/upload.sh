@@ -11,7 +11,6 @@ eval "$(getargs -mWv)"
 
 src=web
 tempdir=/tmp/upload
-man_host=batgirl.eecs.northwestern.edu
 
 remove_tempdir () {
     rm -Rf $tempdir
@@ -38,13 +37,11 @@ assert_branch () {
     fi
 }
 
-upload_man_pages () {
-    if [[ -z "$MAN_HOST" ]]; then
-        MAN_HOST="$man_host"
-        echo >&2 "\$MAN_HOST not set; using $MAN_HOST"
-    fi
 
-    ssh "$MAN_HOST" pub/scripts/update.sh
+upload_man_pages () {
+    : ${man_host? needs to be set in /etc/config.sh}
+    : ${man_update_cmd? needs to be set in /etc/config.sh}
+    ssh "$man_host" $man_update_cmd
 }
 
 upload_website () {
