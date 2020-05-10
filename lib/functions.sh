@@ -223,6 +223,14 @@ getargs () (
                 define_var "${arg%...}" '$*'
                 break
                 ;;
+            ?*=*)
+                echo 'if [ $# = 0 ]; then'
+                    define_var ${arg%%=*} ${argv#*=}
+                echo 'else'
+                    define_var ${arg%%=*} '$1'
+                echo '  shift'
+                echo 'fi'
+                ;;
             *)
                 define_var $arg '$1'
                 echo 'if [ $# = 0 ]; then'
