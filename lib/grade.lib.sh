@@ -379,6 +379,31 @@ assert_function_absence () {
     fi
 }
 
+assert_constant_absence () {
+    local points; get_points
+    local constval; constvalue=$1; shift
+    local filename; filename=$1; shift
+
+    local fnb; ccb='<code class=\"filename\">'
+    local fne; cce='</code>'
+
+    local hconstval; hconstval="<var>$constval</var>"
+    local hfilename; hfilename="$fnb$filename$fne"
+    local hbfilename; hbfilename="$fnb$(basename "$filename")$fbe"
+    local pat; pat="[[:<:]]$constval[[:>:]]"
+
+    html_test_case "Checking for magic number $hconstval in $hbfilename"
+    html_p Magic numbers should not appear in code, because they make \
+        it non-portable, harder to understand, and harder to change.
+
+    if egrep -sq "$pat" "$filename"; then
+        egrep -nC2 "$pat" "$filename" 2>&1 | html_grep_output "$pat" || true
+        score_if false
+    else
+        score_if true
+    fi
+}
+
 points_summary_tr () {
     printf "<tr><th>%s</th><td class=\"numeric\">$2 </td></tr>\n" "$1" "$3"
 }
