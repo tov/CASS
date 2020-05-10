@@ -153,7 +153,7 @@ html_grep_output () {
 
         \@^('$ccgo_clopen')?([[:digit:]]*)[:-](.*)$@{
             s@@\1<small>\2</small> \3@
-            s@'$pat'@\1<strong>\2</strong>@g
+            s@'$pat'@<strong>&</strong>@g
             bdone
         }
 

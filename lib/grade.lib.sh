@@ -340,7 +340,7 @@ assert_warning_absence () {
 
     local hfilename; hfilename="$fnb$filename$fne"
     local hbfilename; hbfilename="$fnb$(basename "$filename")$fbe"
-    local pat; pat="^( |[^ ]*: (In function |warning: |note: ))"
+    local pat; pat="^[^ ]*: (warning|note): "
 
     html_test_case "Checking for compilation warnings in $hbfilename"
     html_p There should not be any warnings when compiling your code.
@@ -364,7 +364,7 @@ assert_function_absence () {
     local hfunname; hfunname="<var>$funname</var>"
     local hfilename; hfilename="$fnb$filename$fne"
     local hbfilename; hbfilename="$fnb$(basename "$filename")$fbe"
-    local pat; pat="(^|[^[:alnum:]])($funname *[(])"
+    local pat; pat="\\b$funname *[(]"
 
     html_test_case "Checking for $hfunname in $hbfilename"
     html_p There should not be any calls to function $hfunname \
@@ -379,9 +379,16 @@ assert_function_absence () {
     fi
 }
 
+strip_comments () {
+    test -e "$1" || return 0
+    sed 's/X/X0/g; s/__/X1/g; s/#/X2/g' "$1" |
+        gcc -fpreprocessed -dD -E - |
+        sed '1d; s/X2/#/g; s/X1/__/g; s/X0/X/g'
+}
+
 assert_constant_absence () {
     local points; get_points
-    local constval; constvalue=$1; shift
+    local constval; constval=$1; shift
     local filename; filename=$1; shift
 
     local fnb; ccb='<code class=\"filename\">'
@@ -390,18 +397,22 @@ assert_constant_absence () {
     local hconstval; hconstval="<var>$constval</var>"
     local hfilename; hfilename="$fnb$filename$fne"
     local hbfilename; hbfilename="$fnb$(basename "$filename")$fbe"
-    local pat; pat="[[:<:]]$constval[[:>:]]"
+    local pat; pat="\\b$constval\\b"
 
-    html_test_case "Checking for magic number $hconstval in $hbfilename"
+    html_test_case "Checking for literal $hconstval in $hbfilename"
     html_p Magic numbers should not appear in code, because they make \
         it non-portable, harder to understand, and harder to change.
 
-    if egrep -sq "$pat" "$filename"; then
-        egrep -nC2 "$pat" "$filename" 2>&1 | html_grep_output "$pat" || true
+    tmpfile=$(gmktemp -p '' grade.lib.strip_comments.XXXXXX)
+    strip_comments "$filename" > "$tmpfile"
+    if egrep -sq "$pat" "$tmpfile"; then
+            egrep -nC2 "$pat" "$tmpfile" 2>&1 |
+            html_grep_output "$pat" || true
         score_if false
     else
         score_if true
     fi
+    rm "$tmpfile"
 }
 
 points_summary_tr () {
