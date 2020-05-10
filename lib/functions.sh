@@ -29,7 +29,7 @@ course_load_var () {
     var="$1"
     file="$COURSE_ETC/$2"
 
-    if [[ -f "$file" ]]; then
+    if [ -f "$file" ]; then
         eval "$var=\$(cat \"$file\"); export $var"
     fi
 }
@@ -48,7 +48,7 @@ course_eval_env () {
 }
 
 course_init_env () {
-    if [[ -d "$COURSE_ROOT/private" ]]; then
+    if [ -d "$COURSE_ROOT/private" ]; then
         COURSE_PRIVATE=$COURSE_ROOT/private
     else
         COURSE_PRIVATE=$COURSE_ROOT
@@ -183,13 +183,12 @@ getargs () (
         echo "${i}exit $result"
     }
 
-    if [[ -n "$flags" ]]; then
+    if [ -n "$flags" ]; then
         define_var actual_given_flag
         for flag in $(explode_words $flags); do
             define_var flag_$flag
         done
-        echo 'while [[ -n "$1" ]]; do'
-        echo '    true'
+        echo 'while [ $# -gt 0 ]; do'
         echo '  case "$1" in'
         echo '    --) shift; break;;'
         echo '    -)  break;;'
@@ -224,7 +223,7 @@ getargs () (
                 ;;
             *)
                 define_var $arg '$1'
-                echo 'if [[ $# = 0 ]]; then'
+                echo 'if [ $# = 0 ]; then'
                 printf '  missing="$missing %s"\n' $(echo $arg | tr a-z A-Z)
                 echo 'else'
                 echo '  shift'
@@ -233,12 +232,12 @@ getargs () (
         esac
     done
 
-    echo 'if [[ -n "$missing" ]]; then'
+    echo 'if [ -n "$missing" ]; then'
     BAIL '  ' 3 'Missing arguments:$missing'
     echo 'fi'
 
     if ! $dotted; then
-        echo 'if ! [[ $# = 0 ]]; then'
+        echo 'if ! [ $# = 0 ]; then'
         BAIL '  ' 4 'Extra arguments: ${@/#/\\n • }'
         echo 'fi'
     fi
@@ -262,7 +261,7 @@ dump_args () {
 headingf () {
     eval "$(getargs + -s char fmt ...)"
 
-    if [[ -n "$flag_s" ]]; then
+    if [ -n "$flag_s" ]; then
         fmt="$char$char$char $fmt $char$char$char"
     fi
 
@@ -292,7 +291,7 @@ netid_exists () {
 find_single () {
     eval "$(getargs + description ...)"
 
-    if [[ $# != 1 ]]; then
+    if [ $# != 1 ]; then
         printf "Cannot resolve %s\n" "$description" >&4
         printf "Candidates were: %s\n" "$*" | fmt   >&4
         exit 2
@@ -357,7 +356,7 @@ find_student () {
     if ! netid=$(find_netid "$regexp" 4>/dev/null); then
         netid=$(find_netids_by_info "$regexp" 4>/dev/null) || true
 
-        if [[ -n "$flag_1" ]]; then
+        if [ -n "$flag_1" ]; then
             case "$netid" in
                 '')
                     printf 'No match for ‘%s’.\n' "$regexp"
@@ -375,7 +374,7 @@ find_student () {
     fi
 
     for netid in $netid; do
-        if [[ -n "$flag_q" ]]; then
+        if [ -n "$flag_q" ]; then
             printf '%s\n' $netid
         else
             print_student_info -n $netid
@@ -403,7 +402,7 @@ print_student_property () {
 }
 
 print_student_info () {
-    if [[ "$1" = -n ]]; then
+    if [ "$1" = -n ]; then
         shift
         printf '%-10s ' "$1"
     fi
@@ -444,7 +443,7 @@ show_progress () {
     "$@" >/dev/null
     result=$?
 
-    if [[ "$result" = 0 ]]; then
+    if [ "$result" = 0 ]; then
         echo ' okay.'
     else
         echo ' FAILED.'
