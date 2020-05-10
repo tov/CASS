@@ -232,10 +232,10 @@ getargs () (
                 echo 'fi'
                 ;;
             *)
-                define_var $arg '$1'
                 echo 'if [ $# = 0 ]; then'
                 printf '  missing="$missing %s"\n' $(echo $arg | tr a-z A-Z)
                 echo 'else'
+                    define_var $arg '$1'
                 echo '  shift'
                 echo 'fi'
                 ;;
