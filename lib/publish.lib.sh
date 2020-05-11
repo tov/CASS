@@ -99,7 +99,6 @@ publish_dir () {
 
     rsync --recursive --copy-links --times \
         --include misc.xml              \
-        --include workspace.xml         \
         --include codeStyles            \
         --include inspectionProfiles    \
         $args                   \
