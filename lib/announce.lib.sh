@@ -1,14 +1,29 @@
 # For printing announcements/messages/logging
 
+exec 3>&1
+QUIET=
+go_quiet () {
+    QUIET=:
+    exec >/dev/null
+}
+
 msgf () {
-    printf >&4 "$@"
+    printf >&3 "$@"
 }
 
 announce () {
+    local fmt; fmt=$1; shift
     if [ -n "$QUIET" ]; then
-        msgf '%s\n' "$(printf "$@")"
+        if [ "$fmt" = -Q ]; then
+            return 0
+        fi
+        msgf "$fmt\n" "$@"
     else
-        msgf '\n*** %s\n' "$(printf "$@")"
+        if [ "$fmt" = -Q ]; then
+            fmt=$1
+            shift
+        fi
+        msgf "\n*** fmt\n" "$@"
     fi
 }
 
