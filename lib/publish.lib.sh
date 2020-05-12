@@ -48,7 +48,8 @@ FIXUP_TEMPLATE='
     /^$/,$d
     s| -> .*||
     s| |\\\\ |g
-    s|^|%s: |
+    s|.*|%s: &\
+&:|
 '
 
 publish_dir () {
