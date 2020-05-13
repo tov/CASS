@@ -104,7 +104,6 @@ publish_dir () {
         --include inspectionProfiles    \
         $args                   \
         --exclude a.out         \
-        --exclude doc           \
         --exclude .DS_Store     \
         --exclude .git          \
         --exclude '*.dSYM'      \
