@@ -23,7 +23,7 @@ announce () {
             fmt=$1
             shift
         fi
-        msgf "\n*** fmt\n" "$@"
+        msgf "\n*** $fmt\n" "$@"
     fi
 }
 

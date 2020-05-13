@@ -186,7 +186,7 @@ getargs () (
 
     if [ -n "$flags" ]; then
         define_var actual_given_flag
-        local exploded; explode_words=$(explode_words $flags)
+        local exploded; exploded=$(explode_words $flags)
         for flag in $exploded; do
             define_var flag_$flag
         done
