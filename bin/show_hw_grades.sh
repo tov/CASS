@@ -3,7 +3,7 @@
 . "$(dirname "$0")/.CASS"
 course_use find
 
-# Shows the automated-test grade distribution for hw$hw.
+# Shows the automated-test results for hw$hw.
 #
 #  -P           show raw points instead of percentages
 #  -d           show distribution (implies -s)
@@ -12,7 +12,11 @@ course_use find
 #  -2           don't dedup partners
 
 process_arguments () {
-    eval "$(getargs -Pdsr2 hw)"
+    eval "$(getargs -Pdsr2 hw netids...)"
+
+    if [ -n "$flag_d" -a -n "$netids" ]; then
+        cass_error 1 "cannot combine -d flag with NetID(s)"
+    fi
 
     if [ -z "$flag_P" ]; then
         format='%5.1f%%'
@@ -51,8 +55,19 @@ print_score () {
     fi
 }
 
+select_netids () {
+    if [ -n "$netids" ]; then
+        local netid
+        for netid in $netids; do
+            find_student -q1 "$netid"
+        done
+    else
+        all_netids
+    fi
+}
+
 read_scores () (
-    all_netids | while read netid; do
+    while read netid; do
         repo=$(find_team_repo $hw $netid)
         log=$repo/tests.log
 
@@ -89,6 +104,7 @@ build_histogram () {
 
 process_arguments "$@"
 
+select_netids   |
 read_scores     |
 sort_scores     |
 build_histogram
