@@ -379,10 +379,28 @@ assert_function_absence () {
     fi
 }
 
+find_gcc () {
+    if [ -n "${REAL_GCC-}" ]; then
+        return 0
+    fi
+
+    local candidate
+    for candidate in gcc-9 gcc-8 gcc-7 gcc-6; do
+        if REAL_GCC=$(which $candidate 2>/dev/null) && [ -x "$REAL_GCC" ]; then
+            return 0
+        fi
+    done
+
+    unset REAL_GCC
+    return 1
+}
+
 strip_comments () {
-    test -e "$1" || return 0
+    find_gcc      || return 0
+    test -e "$1"  || return 0
+
     sed 's/X/X0/g; s/__/X1/g; s/#/X2/g' "$1" |
-        gcc -fpreprocessed -dD -E - |
+        ${REAL_GCC} -fpreprocessed -dD -E - |
         sed '1d; s/X2/#/g; s/X1/__/g; s/X0/X/g'
 }
 
