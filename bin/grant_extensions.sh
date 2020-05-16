@@ -7,6 +7,7 @@ course_use find grade
 #
 # -N            dry run -- don't actually extend
 # -R            don't resolve NetIDs
+# -U            don't upload log
 # -q            quiet
 
 select_netids () {
@@ -38,7 +39,10 @@ extend_all () {
         mkdir -p "$repo"
         log=$repo/extension.log
         extend_one 2>&1 1>"$log"
-        $_N gsc -u $netid cp "$log" hw$hw: || true
+
+        if [ -z "$flag_U" ]; then
+            $_N gsc -u $netid cp "$log" hw$hw: || true
+        fi
     done
 }
 
