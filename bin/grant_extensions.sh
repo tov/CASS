@@ -50,8 +50,11 @@ extend_one () {
     echo "Hello, I am ${0##*/}, and the time is $(date)."
     echo
 
-    unit_score=$(get_hw_score $hw $netid || echo 0)
-    score=$(bc_expr "100 * $unit_score")
+    if unit_score=$(get_hw_score $hw $netid); then
+        score=$(bc_expr "100 * $unit_score")
+    else
+        score=-
+    fi
 
     if goal=$(get_hw_goal $hw $netid); then
         if [ -n "$goal" ]; then
@@ -62,19 +65,21 @@ extend_one () {
     else
         eprintf 'hw%02d/%s: Error: Couldn’t parse goal.txt\n' $hw $netid
         eprintf '  expected contents: a number\n'
-        eprintf '  actual contents:   ‘%s’\n' "$goal"
-        eprintf '\n'
+        eprintf '  actual contents:   ‘%s’\n\n' "$goal"
         goal=
     fi
 
     if [ -z "$goal" ]; then
         goal=100
-        printf 'Test score goal defaulted to %g%%.\n' "$goal"
-    echo
+        printf 'Test score goal defaulted to %g%%.\n\n' "$goal"
     fi
 
-    printf 'Actual test score is %g%%.\n' "$score"
-    echo
+    if [ "$score" = - ]; then
+        score=0
+        printf 'Not yet tested.\n\n'
+    else
+        printf 'Actual test score is %g%%.\n\n' "$score"
+    fi
 
     if bc_cond "$score < $goal"; then
         eprintf 'hw%02d/%s: Granting extension.\n' $hw $netid
