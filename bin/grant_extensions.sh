@@ -60,7 +60,7 @@ extend_one () {
 
     if bc_cond "$score < $goal"; then
         echo 'Granting extension.'
-        $_N "$COURSE_BIN"/extend.sh -f $hw $netid tomorrow midnight
+        $_N "$COURSE_BIN"/extend.sh -f $hw $netid tomorrow
     else
         echo 'No extension needed.'
     fi
