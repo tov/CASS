@@ -23,18 +23,29 @@ select_netids () {
     fi
 }
 
+eprintf () {
+    printf "$@" >&2
+    printf "$@"
+}
+
 extend_all () {
     local netid
+    local repo
     local log
 
     while read netid; do
-        log=$(find_team_repo $hw $netid)/extension.log
-        extend_one 2>&1 | tee $log
-        $_N gsc -u $netid cp $log hw$hw:
+        repo=$(find_team_repo $hw $netid)
+        mkdir -p "$repo"
+        log=$repo/extension.log
+        extend_one 2>&1 1>"$log"
+        $_N gsc -u $netid cp "$log" hw$hw: || true
     done
 }
 
 extend_one () {
+    echo "Hello, I am ${0##*/}, and the time is $(date)."
+    echo
+
     unit_score=$(get_hw_score $hw $netid || echo 0)
     score=$(bc_expr "100 * $unit_score")
 
@@ -45,26 +56,29 @@ extend_one () {
             printf 'No goal.txt found.\n'
         fi
     else
-        printf>&2 'Error: Couldn’t parse goal.txt\n'
-        printf>&2 '  expected contents: a number\n'
-        printf>&2 '  actual contents:   ‘%s’\n' "$goal"
+        eprintf 'hw%02d/%s: Error: Couldn’t parse goal.txt\n' $hw $netid
+        eprintf '  expected contents: a number\n'
+        eprintf '  actual contents:   ‘%s’\n' "$goal"
+        eprintf '\n'
         goal=
     fi
 
     if [ -z "$goal" ]; then
         goal=100
         printf 'Test score goal defaulted to %g%%.\n' "$goal"
+    echo
     fi
 
     printf 'Actual test score is %g%%.\n' "$score"
+    echo
 
     if bc_cond "$score < $goal"; then
-        echo 'Granting extension.'
+        eprintf 'hw%02d/%s: Granting extension.\n' $hw $netid
         $_N "$COURSE_BIN"/extend.sh -f $hw $netid tomorrow
     else
-        echo 'No extension needed.'
+        eprintf 'hw%02d/%s: No extension needed.\n' $hw $netid
     fi
-
+    echo
 }
 
 eval "$(getargs -NRq hw netids...)"
