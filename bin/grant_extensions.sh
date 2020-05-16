@@ -90,7 +90,7 @@ extend_one () {
     echo
 }
 
-eval "$(getargs -NRq hw netids...)"
+eval "$(getargs -NRUq hw netids...)"
 
 if [ -n "$flag_q" ]; then
     exec 1>/dev/null
