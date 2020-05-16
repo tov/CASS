@@ -482,7 +482,6 @@ c_quote_string () {
         tr -d '\n'
 }
 
-
 cdq () {
     c_quote_string \" "$1"
 }
@@ -496,5 +495,20 @@ detect_language () {
         echo cxx
     else
         echo c
+    fi
+}
+
+# $1: hw
+# $2: netid
+get_hw_score () {
+    local tests_log; tests_log=$(find_tests_log "$1" "$2")
+    local score
+    if [ -f "$tests_log" ] && score=$(tail -1 "$tests_log") &&
+        expr "$score" : '[0-9.]*[0-9]$' >/dev/null;
+    then
+        printf %g "$score"
+        return 0
+    else
+        return 1
     fi
 }

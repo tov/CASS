@@ -1,7 +1,7 @@
 #!/bin/sh
 
 . "$(dirname "$0")/.CASS"
-course_use find
+course_use find grade
 
 # Shows the automated-test results for hw$hw.
 #
@@ -68,16 +68,13 @@ select_netids () {
 
 read_scores () (
     while read netid; do
-        repo=$(find_team_repo $hw $netid)
-        log=$repo/tests.log
-
-        if ! [ -f "$log" ] ||
-            { [ -z "$flag_2" ] && [ -L "$repo" ]; }
-        then
+        if [ -z "$flag_2" -a -L "$(find_team_repo $hw $netid)" ]; then
             continue
         fi
 
-        print_score "$netid" "$(tail -1 "$log")"
+        if score=$(get_hw_score $hw $netid); then
+            print_score "$netid" "$score"
+        fi
     done
 )
 

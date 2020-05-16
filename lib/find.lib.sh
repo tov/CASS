@@ -11,6 +11,10 @@ find_team_repo () {
     printf '%s/hw%02d/%s' "$REPO_BASE" "$1" "$(netid_dirname "$2")"
 }
 
+find_tests_log () {
+    printf '%s/tests.log' "$(find_team_repo "$1" "$2")"
+}
+
 find_homework_script () {
     printf "%s/tester/%s_this" "$(find_homework "$1")" "$2"
 }
