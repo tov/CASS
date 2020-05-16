@@ -105,6 +105,10 @@ bc_expr () {
     echo "$*" | bc -l
 }
 
+bc_cond () {
+    test "$(bc_expr "$*")" = 1
+}
+
 assert () {
     local code
     local msg

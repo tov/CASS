@@ -15,6 +15,10 @@ find_tests_log () {
     printf '%s/tests.log' "$(find_team_repo "$1" "$2")"
 }
 
+find_goal_txt () {
+    printf '%s/Resources/goal.txt' "$(find_team_repo "$1" "$2")"
+}
+
 find_homework_script () {
     printf "%s/tester/%s_this" "$(find_homework "$1")" "$2"
 }

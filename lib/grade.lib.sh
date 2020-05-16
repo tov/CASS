@@ -507,8 +507,29 @@ get_hw_score () {
         expr "$score" : '[0-9.]*[0-9]$' >/dev/null;
     then
         printf %g "$score"
-        return 0
     else
         return 1
     fi
+}
+
+# $1: hw
+# $2: netid
+_goal_regexp='[[:space:]]*\([0-9]\{1,3\}\(\.[0-9]*\)\{0,1\}\)[[:space:]]*$'
+get_hw_goal () {
+    local goal_txt
+    local goal_str
+    local goal
+
+    goal_txt=$(find_goal_txt "$1" "$2")
+
+    if ! goal_str=$(cat "$goal_txt" 2>/dev/null); then
+        return 0
+    fi
+
+    if ! goal=$(expr "$goal_str" : "$_goal_regexp"); then
+        printf %s "$goal_str"
+        return 1
+    fi
+
+    printf %s "$goal"
 }
