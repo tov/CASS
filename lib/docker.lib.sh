@@ -81,6 +81,10 @@ docker_start () {
     cass_error 99 "Couldn't start docker after $attempts tries"
 }
 
+docker_start_if_not () {
+    docker exec "$2" /bin/true 2>/dev/null || docker_start "$@"
+}
+
 get_current_container_var () {
     case "$1" in
         build)
