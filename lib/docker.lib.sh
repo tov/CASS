@@ -116,7 +116,20 @@ get_current_container () {
 docker_build () {
     local hash
     hash=$(get_current_container build) || return
-    docker exec $hash "$@"
+    local flags
+    flags=
+    while [ $# -gt 1 ]; do
+        case "$1" in
+            -*)
+                flags="$flags $1"
+                shift
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+    docker exec $flags $hash "$@"
 }
 
 docker_test () {
