@@ -28,25 +28,30 @@ announce () {
 }
 
 doing () {
-    current_doing=$(printf "$@" | tr A-Z a-z)
+    Current_doing=$(printf "$@")
+    current_doing=$(printf %s "$Current_doing" | tr A-Z a-z)
 
     if [ -n "$QUIET" ]; then
         msgf ' + %s... ' "$current_doing"
     else
-        msgf '\n+++ %s...\n' "$(printf "$@")"
+        msgf '\n+++ %s...\n' "$Current_doing"
     fi
 
     doing_start=$(current_millis)
 }
 
 did () {
+    test -n "$current_doing" || return 0
+
     if [ -n "$QUIET" ]; then
-        msgf 'done (%s).\n' "$(elapsed_since $doing_start)"
+        msgf '%s (%s).\n' "${1:-done}" "$(elapsed_since $doing_start)"
     else
-        msgf '\n+++ Done %s in %s.\n\n' \
-            "$current_doing" \
-            "$(elapsed_since $doing_start)"
+        msgf '\n+++ %s %s in %s.\n\n' \
+            "$Current_doing" \
+            "${1:-done}" "$(elapsed_since $doing_start)"
     fi
+
+    current_doing=
 }
 
 current_millis () {
