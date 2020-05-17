@@ -331,59 +331,6 @@ check_last_exitcode () {
     esac
 }
 
-_warning_pat="^[^ ]*: (warning|note): "
-grep_warnings () {
-    egrep "$_warning_pat" "$@"
-}
-
-assert_warning_absence () {
-    local points; get_points
-    local filename; filename=$1; shift
-
-    local fnb; ccb='<code class=\"filename\">'
-    local fne; cce='</code>'
-
-    local hfilename; hfilename="$fnb$filename$fne"
-    local hbfilename; hbfilename="$fnb$(basename "$filename")$fbe"
-
-    html_test_case "Checking for compilation warnings in $hbfilename"
-    html_p There should not be any warnings when compiling your code.
-
-    if grep_warnings -sq "$filename"; then
-        grep_warnings -n "$filename" 2>&1 |
-            html_grep_output "$_warning_pat" || true
-        score_if false
-    else
-        score_if true
-    fi
-}
-
-assert_function_absence () {
-    local points; get_points
-    local funname; funname=$1; shift
-    local filename; filename=$1; shift
-
-    local fnb; ccb='<code class=\"filename\">'
-    local fne; cce='</code>'
-
-    local hfunname; hfunname="<var>$funname</var>"
-    local hfilename; hfilename="$fnb$filename$fne"
-    local hbfilename; hbfilename="$fnb$(basename "$filename")$fbe"
-    local pat; pat="\\b$funname *[(]"
-
-    html_test_case "Checking for $hfunname in $hbfilename"
-    html_p There should not be any calls to function $hfunname \
-        in file $hfilename, because $hfilename should not contain code \
-        that calls $hfunname directly.
-
-    if egrep -sq "$pat" "$filename"; then
-        egrep -nC2 "$pat" "$filename" 2>&1 | html_grep_output "$pat" || true
-        score_if false
-    else
-        score_if true
-    fi
-}
-
 find_gcc () {
     if [ -n "${REAL_GCC-}" ]; then
         return 0
@@ -409,33 +356,80 @@ strip_comments () {
         sed '1d; s/X2/#/g; s/X1/__/g; s/X0/X/g'
 }
 
+_FNB='<code class=\"filename\">'
+_FNE='</code>'
+assert_pattern_absence () {
+    local points;       get_points
+    local TYPE;         TYPE=$1;        shift
+    local THING;        THING=$1;        shift
+    local pattern;      pattern=$1;     shift
+    local filename;     filename=$1;    shift
+    local FILE;         FILE=$_FNB$filename$_FNE
+    local FILEBASE;     FILEBASE=$_FNB${filename##*/}$_FNE
+
+    local srcfile;      srcfile=$filename
+    case "$filename" in
+        *.h|*.c|*.hxx|*.cxx)
+            local tmpfile
+            tmpfile=$(gmktemp -p '' grade_lib.stript_comments.XXXXXX)
+            trap 'rm -f "$tmpfile"' RETURN
+            strip_comments "$filename" > "$tmpfile"
+            srcfile=$tmpfile
+    esac
+
+    html_test_case "Checking for $TYPE $THING in $FILEBASE"
+    html_p "$(eval "echo $*")"
+
+    if egrep -sq "$pattern" "$srcfile"; then
+        egrep -nC2 "$pattern" "$srcfile" 2>&1 |
+            html_grep_output "$pattern" || true
+        score_if false
+    else
+        score_if true
+    fi
+}
+
+assert_function_absence () {
+    local points; get_points
+    local funname; funname=$1; shift
+    local filename; filename=$1; shift
+
+    assert_pattern_absence 'calls to function' "<var>$funname</var>" \
+        "\\b$funname *[(]" "$filename" \
+        File \$FILE should not contain code that calls function \
+        \$THING directly.
+}
+
+_warning_pat='^[^ ]*: (warning|note): '
+assert_warning_absence () {
+    local points; get_points
+    local filename; filename=$1; shift
+
+    assert_pattern_absence compilation warnings \
+        "$_warning_pat" "$filename" \
+        There should not be any warnings when compiling your code.
+}
+
+assert_mention_absence () {
+    local points; get_points
+    local thingname; thingname=$1; shift
+    local pattern; pattern=$1; shift
+    local filename; filename=$1; shift
+
+    assert_pattern_absence 'mentions of' "$thingname" \
+        "$pattern" "$filename" "$@"
+}
+
 assert_constant_absence () {
     local points; get_points
     local constval; constval=$1; shift
     local filename; filename=$1; shift
 
-    local fnb; ccb='<code class=\"filename\">'
-    local fne; cce='</code>'
-
-    local hconstval; hconstval="<var>$constval</var>"
-    local hfilename; hfilename="$fnb$filename$fne"
-    local hbfilename; hbfilename="$fnb$(basename "$filename")$fbe"
-    local pat; pat="\\b$constval\\b"
-
-    html_test_case "Checking for literal $hconstval in $hbfilename"
-    html_p Magic numbers should not appear in code, because they make \
-        it non-portable, harder to understand, and harder to change.
-
-    tmpfile=$(gmktemp -p '' grade.lib.strip_comments.XXXXXX)
-    strip_comments "$filename" > "$tmpfile"
-    if egrep -sq "$pat" "$tmpfile"; then
-            egrep -nC2 "$pat" "$tmpfile" 2>&1 |
-            html_grep_output "$pat" || true
-        score_if false
-    else
-        score_if true
-    fi
-    rm "$tmpfile"
+    assert_pattern_absence literal "<var>$constval</var>" \
+        "\\b$constval\\b" "$filename" \
+        Magic numbers like \$THING shouldn’t appear directly in your \
+        code because they make it less portable, harder to \
+        understand, and harder to change.
 }
 
 points_summary_tr () {
