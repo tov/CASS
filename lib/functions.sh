@@ -274,18 +274,9 @@ dump_args () {
 
 headingf () {
     eval "$(getargs + -s char fmt ...)"
-
-    if [ -n "$flag_s" ]; then
-        fmt="$char$char$char $fmt $char$char$char"
-    fi
-
-    local message
-    message=$(printf -- "$fmt\n" "$@")
-
-    echo
-    echo "$message" | tr -C '\n' "$char"
-    echo "$message"
-    echo "$message" | tr -C '\n' "$char"
+    char=$char$char$char
+    fmt='\n%s\n%s '$fmt' %s\n%s\n'
+    printf "$fmt" "$char" "$char" "$@" "$char" "$char"
 }
 
 team_members () {

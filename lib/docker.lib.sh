@@ -11,7 +11,7 @@ docker_lib_on_exit () {
 register_exit_function docker_lib_on_exit
 
 docker_kill_on_exit () {
-    set -- $docker_kill_on_exit_list $*
+    set -- ${docker_kill_on_exit_list-} $*
     docker_kill_on_exit_list=$*
 }
 
@@ -19,11 +19,11 @@ try_docker_start () {
     local kind; kind=$1; shift
     local name; name=$1; shift
     local image; image=cs211-$kind
-    local hash
+    export CURRENT_CONTAINER; CURRENT_CONTAINER=
 
     case "$kind" in
         build)
-            hash=$(
+            CURRENT_CONTAINER=$(
                 docker run \
                     --name "$name" \
                     --rm --read-only --init --detach \
@@ -34,25 +34,29 @@ try_docker_start () {
                     $image \
                     sleep $docker_time_limit
             ) || return 1
-            docker_kill_on_exit $hash
-            CURRENT_BUILD_CONTAINER=$hash
+            CURRENT_BUILD_CONTAINER=$CURRENT_CONTAINER
             export CURRENT_BUILD_CONTAINER
             ;;
         test)
-            hash=$(
+            local workdir
+            workdir=/hw$(
+                if [ -d build ]; then
+                    echo /build
+                fi
+            )
+            CURRENT_CONTAINER=$(
                 docker run \
                     --name "$name" \
                     --rm --read-only --init --detach \
                     --tmpfs /tmp \
                     --volume "$(pwd):/hw:ro" \
                     --volume "$(pwd)/out:/out:rw" \
-                    --workdir "/hw$(! test -d build || echo /build)" \
+                    --workdir "$workdir" \
                     "$@" \
                     $image \
                     sleep $docker_time_limit
             ) || return 1
-            docker_kill_on_exit $hash
-            CURRENT_TEST_CONTAINER=$hash
+            CURRENT_TEST_CONTAINER=$CURRENT_CONTAINER
             export CURRENT_TEST_CONTAINER
             ;;
         *)
@@ -66,7 +70,10 @@ docker_start () {
     local attempt_number
     for attempt_number in $(seq $attempts); do
         if try_docker_start "$@"; then
-            return
+            if [ -z "$NO_DOCKER_REAP" ]; then
+                docker_kill_on_exit "$CURRENT_CONTAINER"
+            fi
+            return 0
         fi
 
         {
@@ -81,8 +88,16 @@ docker_start () {
     cass_error 99 "Couldn't start docker after $attempts tries"
 }
 
-docker_start_if_not () {
-    docker exec "$2" /bin/true 2>/dev/null || docker_start "$@"
+_container_for_fmt=hw%02d-%s-%s
+get_container_for () {
+    container=$(printf $_container_for_fmt "$1" "$2" "$3")
+    CURRENT_CONTAINER=$(docker ps --no-trunc -qf name=$container)
+    if [ -n "$CURRENT_CONTAINER" ]; then
+        echo "$CURRENT_CONTAINER"
+    else
+        docker ps -a >&4
+        cass_fatal 104 "need to start me a container"
+    fi
 }
 
 get_current_container_var () {
@@ -116,20 +131,7 @@ get_current_container () {
 docker_build () {
     local hash
     hash=$(get_current_container build) || return
-    local flags
-    flags=
-    while [ $# -gt 1 ]; do
-        case "$1" in
-            -*)
-                flags="$flags $1"
-                shift
-                ;;
-            *)
-                break
-                ;;
-        esac
-    done
-    docker exec $flags $hash "$@"
+    docker exec $hash "$@"
 }
 
 docker_test () {
