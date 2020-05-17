@@ -27,7 +27,7 @@ eval_publish () (
 
 copy_rec () {
     mkdir -p "$2"
-    cp -RL "$1" "$2"
+    rsync -rL --copy-unsafe-links "$1" "$2"
 }
 
 publish_dir () (
