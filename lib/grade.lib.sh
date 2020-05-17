@@ -514,7 +514,7 @@ get_hw_score () {
 
 # $1: hw
 # $2: netid
-_goal_regexp='[[:space:]]*\([0-9]\{1,3\}\(\.[0-9]*\)\{0,1\}\)[[:space:]]*$'
+_goal_regexp='[[:space:]]*\([0-9]\{1,3\}\(\.[0-9]*\)\{0,1\}\)%\{0,1\}[[:space:]]*$'
 get_hw_goal () {
     local goal_txt
     local goal_str

@@ -7,6 +7,7 @@ course_use find grade
 #
 # -N            dry run -- don't actually extend
 # -R            don't resolve NetIDs
+# -U            don't upload log
 # -q            quiet
 
 select_netids () {
@@ -23,20 +24,37 @@ select_netids () {
     fi
 }
 
+eprintf () {
+    printf "$@" >&2
+    printf "$@"
+}
+
 extend_all () {
     local netid
+    local repo
     local log
 
     while read netid; do
-        log=$(find_team_repo $hw $netid)/extension.log
-        extend_one 2>&1 | tee $log
-        $_N gsc -u $netid cp $log hw$hw:
+        repo=$(find_team_repo $hw $netid)
+        mkdir -p "$repo"
+        log=$repo/extension.log
+        extend_one 2>&1 1>"$log"
+
+        if [ -z "$flag_U" ]; then
+            $_N gsc -u $netid cp "$log" hw$hw: || true
+        fi
     done
 }
 
 extend_one () {
-    unit_score=$(get_hw_score $hw $netid || echo 0)
-    score=$(bc_expr "100 * $unit_score")
+    echo "Hello, I am ${0##*/}, and the time is $(date)."
+    echo
+
+    if unit_score=$(get_hw_score $hw $netid); then
+        score=$(bc_expr "100 * $unit_score")
+    else
+        score=-
+    fi
 
     if goal=$(get_hw_goal $hw $netid); then
         if [ -n "$goal" ]; then
@@ -45,29 +63,34 @@ extend_one () {
             printf 'No goal.txt found.\n'
         fi
     else
-        printf>&2 'Error: Couldn’t parse goal.txt\n'
-        printf>&2 '  expected contents: a number\n'
-        printf>&2 '  actual contents:   ‘%s’\n' "$goal"
+        eprintf 'hw%02d/%s: Error: Couldn’t parse goal.txt\n' $hw $netid
+        eprintf '  expected contents: a number\n'
+        eprintf '  actual contents:   ‘%s’\n\n' "$goal"
         goal=
     fi
 
     if [ -z "$goal" ]; then
         goal=100
-        printf 'Test score goal defaulted to %g%%.\n' "$goal"
+        printf 'Test score goal defaulted to %g%%.\n\n' "$goal"
     fi
 
-    printf 'Actual test score is %g%%.\n' "$score"
+    if [ "$score" = - ]; then
+        score=0
+        printf 'Not yet tested.\n\n'
+    else
+        printf 'Actual test score is %g%%.\n\n' "$score"
+    fi
 
     if bc_cond "$score < $goal"; then
-        echo 'Granting extension.'
+        eprintf 'hw%02d/%s: Granting extension.\n' $hw $netid
         $_N "$COURSE_BIN"/extend.sh -f $hw $netid tomorrow
     else
-        echo 'No extension needed.'
+        eprintf 'hw%02d/%s: No extension needed.\n' $hw $netid
     fi
-
+    echo
 }
 
-eval "$(getargs -NRq hw netids...)"
+eval "$(getargs -NRUq hw netids...)"
 
 if [ -n "$flag_q" ]; then
     exec 1>/dev/null
