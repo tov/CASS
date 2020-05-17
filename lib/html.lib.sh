@@ -27,6 +27,19 @@ unhtml () {
     "
 }
 
+capture_test_results () {
+    tee ${1%.*}.hlog |
+        unhtml -l |
+        ubsed -E '
+            s/==[[:digit:]]+==ERROR/=======ERROR/
+            s/0x[0-9a-f]{4}/0x..../g
+            :loop
+                s/(0x[.]{4,})[0-9a-f]/\1./g
+            tloop
+        ' |
+        tee ${1%.*}.log
+}
+
 last_text_fmt=
 textf () {
     last_text_fmt=$(printf '<span class="txt-only">%s</span>' "$1")
