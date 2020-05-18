@@ -11,6 +11,22 @@ msgf () {
     printf >&3 "$@"
 }
 
+note () {
+    local fmt; fmt=$1; shift
+    if [ -n "$QUIET" ]; then
+        if [ "$fmt" = -Q ]; then
+            return 0
+        fi
+        msgf "[$fmt] " "$@"
+    else
+        if [ "$fmt" = -Q ]; then
+            fmt=$1
+            shift
+        fi
+        msgf "=== [$fmt]\n" "$@"
+    fi
+}
+
 announce () {
     local fmt; fmt=$1; shift
     if [ -n "$QUIET" ]; then
