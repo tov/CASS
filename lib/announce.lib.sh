@@ -39,7 +39,7 @@ announce () {
             fmt=$1
             shift
         fi
-        msgf "\n*** $fmt\n" "$@"
+        msgf "*** $fmt\n" "$@"
     fi
 }
 
@@ -68,7 +68,7 @@ doing () {
     if [ -n "$QUIET" ]; then
         msgf ' + %s... ' "$current_doing"
     else
-        msgf '\n+++ %s...\n' "$Current_doing"
+        msgf '+++ %s...\n' "$Current_doing"
     fi
 
     doing_start=$(current_millis)
@@ -80,7 +80,7 @@ did () {
     if [ -n "$QUIET" ]; then
         msgf '%s (%s).\n' "${1:-done}" "$(elapsed_since $doing_start)"
     else
-        msgf '\n+++ %s %s in %s.\n\n' \
+        msgf '+++ %s %s in %s.\n\n' \
             "$Current_doing" \
             "${1:-done}" "$(elapsed_since $doing_start)"
     fi
