@@ -3,8 +3,8 @@
 HW_BASE=$COURSE_ROOT/dev/hw
 REPO_BASE=$COURSE_VAR/grading
 
-find_homework () {
-    printf "%s/%02d" "$HW_BASE" "$1"
+format_homework () {
+    printf "hw%02d" "$1"
 }
 
 find_team_repo () {
@@ -19,12 +19,12 @@ find_goal_txt () {
     printf '%s/Resources/goal.txt' "$(find_team_repo "$1" "$2")"
 }
 
-find_homework_script () {
-    printf "%s/tester/%s_this" "$(find_homework "$1")" "$2"
+find_homework () {
+    printf "%s/%02d" "$HW_BASE" "$1"
 }
 
-format_homework () {
-    printf "hw%02d" "$1"
+find_homework_script () {
+    printf "%s/tester/%s_this" "$(find_homework "$1")" "$2"
 }
 
 netid_dirname () {
