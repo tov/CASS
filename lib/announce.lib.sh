@@ -101,3 +101,31 @@ elapsed_since () {
     printf '%d.%03d s' $elapsed_seconds $subsecond_millis
 }
 
+ansi_color () {
+    printf '\e[%sm' "$1"
+}
+
+COLOR_NORMAL=$(ansi_color 0)
+COLOR_HIGHER=$(ansi_color '0;33')
+COLOR_LOWER=$(ansi_color '0;2')
+
+hilite () {
+    if [ -n "$(tty)" ]; then
+        sed12 \
+            "s/^(.{0,76}).*/    ${COLOR_LOWER}\\1${COLOR_NORMAL}/" \
+            "s/^(.{0,76}).*/    ${COLOR_HIGHER}\\1${COLOR_NORMAL}/" \
+            "$@"
+    else
+        sed12 "s/^/  › /" "s/^/  » /" "$@"
+    fi 2>&1
+}
+
+sed12 () {
+    local sed1; sed1=$1; shift
+    local sed2; sed2=$1; shift
+
+    {
+        "$@" 2>&1 1>&3 | ubsed -E "$sed2" 1>&2
+    } 3>&1 | ubsed -E "$sed1"
+}
+
