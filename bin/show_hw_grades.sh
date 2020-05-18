@@ -79,13 +79,9 @@ read_scores () (
 )
 
 possible_points () {
-    sed -E '
-        /^Points possible: *([0-9]*) *$/!d
-        s//\1/
-        q
-    ' "$(find_team_repo $hw starter)/tests.log"
+    evaluate_test_log < "$(find_team_repo $hw starter)/tests.log"
+    echo $POINTS_POSSIBLE
 }
-
 
 sort_scores () {
     sort $flag_r $sort_opts
