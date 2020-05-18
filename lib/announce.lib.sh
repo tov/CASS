@@ -27,6 +27,24 @@ announce () {
     fi
 }
 
+bg_doing () {
+    test -z "$QUIET" || return
+    current_bg_doing=$(printf "$@")
+    msgf '%s forked to background...\n' \
+        "$current_bg_doing"
+    bg_doing_start=$(current_millis)
+}
+
+bg_did () {
+    test -n "$current_bg_doing" || return 0
+
+    msgf '%s complete in %s.' \
+        "$current_bg_doing" \
+        "$(elapsed_since $bg_doing_start)"
+
+    current_bg_doing=
+}
+
 doing () {
     Current_doing=$(printf "$@")
     current_doing=$(printf %s "$Current_doing" | tr A-Z a-z)
