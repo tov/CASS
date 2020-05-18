@@ -497,6 +497,56 @@ detect_language () {
     fi
 }
 
+alias evaluate_test_log='eval "$(_evaluate_test_log_helper +)"'
+alias gevaluate_test_log='eval "$(_evaluate_test_log_helper)"'
+
+# $1: log
+elaborate_test_log () {
+    _vars='CHECKS_PASSED CHECKS_FAILED TOTAL_CHECKS POINTS_EARNED POINTS_POSSIBLE UNIT_SCORE'
+
+    if [ "${1-}" = + ]; then
+        shift
+        for each in $_vars; do
+            echo "local $each;"
+        done
+    fi
+
+    for each in $_vars; do
+        echo "$each=;"
+    done
+
+    sed -E '
+        /^Checks passed: *([0-9]+) *$/{
+            s//CHECKS_PASSED=\1;/
+            p
+        }
+        /^Checks failed: *([0-9]+) *$/{
+            s//CHECKS_FAILED=\1;/
+            p
+        }
+        /^Points earned: *([0-9]+) *$/{
+            s//POINTS_EARNED=\1;/
+            p
+        }
+        /^Points possible: *([0-9]+) *$/{
+            s//POINTS_POSSIBLE=\1;/
+            p
+        }
+        d
+    ' "$1"
+
+    cat <<-\....EOF
+        if [ -n "$CHECKS_PASSED" -a -n "$CHECKS_FAILED" ]; then
+            TOTAL_CHECKS=$(( CHECKS_PASSED + CHECKS_FAILED ));
+        fi;
+
+        if [ -n "$POINTS_EARNED" -a -n "$POINTS_POSSIBLE" ]; then
+            UNIT_SCORE=$(bc_expr $POINTS_EARNED / $POINTS_POSSIBLE);
+        fi;
+....EOF
+
+}
+
 # $1: hw
 # $2: netid
 get_hw_score () {
