@@ -46,32 +46,85 @@ generate_install_sh_helper () (
     unindent <<-'....end'
         #!/bin/sh
 
-        dst=$HOME/bin
+        set -e
 
-        install_bins () {
-            for file; do
-                if ! [ -x "build/$file" ]; then
-                    echo >&2 "$0: skipping missing binary: $file"
-                    continue
-                fi
+        depend_on () {
+            $do_deps || return 0
 
-                mkdir -p "$dst"
-                install -m 755 "build/$file" "$dst"
-                ln -s "bin/$file" "$HOME/"
+            local input; input=$1; shift
+
+            echo "$input:"
+
+            while [ $# -gt 0 ]; do
+                case "$1" in
+                    -d)
+                        echo "$2: $input"
+                        shift; shift
+                        ;;
+                    -d*)
+                        echo "${1#-d}: $input"
+                        shift
+                        ;;
+                    *)
+                        break
+                        ;;
+                esac
             done
         }
 
+        install_bin () {
+            local file; file=$1; shift
+
+            local dst; dst=$HOME/bin
+            local src; src=build/$file
+            depend_on "$src" "$@"
+
+            if ! [ -x "$src" ]; then
+                echo >&2 "$0: skipping missing binary: $file"
+                return 0
+            fi
+
+            mkdir -p "$dst"
+            install -m 755 "$src" "$dst"
+            ln -s "bin/$file" "$HOME/"
+        }
+
+        install_dir () {
+            local src; src=$1; shift
+            local dst; dst=$1; shift
+
+            mkdir -p "$dst"
+            depend_on "$src" "$@"
+
+            local file
+            for file in $src/*; do
+                if [ -d "$file" ]; then
+                    echo >&2 "Skipping nested directory: $file"
+                    continue
+                fi
+
+                install -m 644 "$file" "$dst"
+                depend_on "$file" "$@"
+            done
+        }
+
+        do_deps=false
+        for arg; do
+            case "$arg" in
+                -d*)
+                    do_deps=true
+                    break
+            esac
+        done
+
         if [ -d Resources ]; then
-            cp -R Resources "$HOME"
+            install_dir Resources "$HOME/Resources" "$@"
         fi
 
 ....end
 
-    printf install_bins
     for target; do
-        printf " '%s'" "$(printf %s "$target" | sed "s/'/'\\\\''/g")"
+        printf 'install_bin "%s" "$@"\n' \
+            "$(printf %s "$target" | sed "s/'/'\\\\''/g")"
     done
-
-    echo ' && true'
-    echo
 )
