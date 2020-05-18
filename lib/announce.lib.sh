@@ -61,7 +61,9 @@ bg_did () {
     current_bg_doing=
 }
 
-doing () {
+alias doing='trap "did error" RETURN; _doing_helper'
+
+_doing_helper () {
     Current_doing=$(printf "$@")
     current_doing=$(printf %s "$Current_doing" | tr A-Z a-z)
 
