@@ -38,7 +38,7 @@ bg_doing () {
 bg_did () {
     test -n "$current_bg_doing" || return 0
 
-    msgf '%s complete in %s.' \
+    msgf '%s complete in %s.\n' \
         "$current_bg_doing" \
         "$(elapsed_since $bg_doing_start)"
 
