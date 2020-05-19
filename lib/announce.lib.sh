@@ -7,6 +7,11 @@ go_quiet () {
     exec >/dev/null
 }
 
+
+ansi_color () {
+    printf '\e[%sm' "$1"
+}
+
 msgf () {
     printf >&3 "$@"
 }
@@ -17,12 +22,14 @@ note () {
         if [ "$fmt" = -Q ]; then
             return 0
         fi
+        if_tty fmt COLOR_GRAY
         msgf "[$fmt] " "$@"
     else
         if [ "$fmt" = -Q ]; then
             fmt=$1
             shift
         fi
+        if_tty fmt COLOR_GRAY
         msgf "=== [$fmt]\n" "$@"
     fi
 }
@@ -33,13 +40,15 @@ announce () {
         if [ "$fmt" = -Q ]; then
             return 0
         fi
+        if_tty fmt COLOR_BRIGHT
         msgf "$fmt\n" "$@"
     else
         if [ "$fmt" = -Q ]; then
             fmt=$1
             shift
         fi
-        msgf "*** $fmt\n" "$@"
+        if_tty fmt COLOR_BLUE
+        msgf "$fmt\n" "$@"
     fi
 }
 
@@ -70,7 +79,7 @@ _doing_helper () {
     if [ -n "$QUIET" ]; then
         msgf ' + %s... ' "$current_doing"
     else
-        msgf '+++ %s...\n' "$Current_doing"
+        msgf ' + %s...\n' "$Current_doing"
     fi
 
     doing_start=$(current_millis)
@@ -82,7 +91,7 @@ did () {
     if [ -n "$QUIET" ]; then
         msgf '%s (%s).\n' "${1:-done}" "$(elapsed_since $doing_start)"
     else
-        msgf '+++ %s %s in %s.\n\n' \
+        msgf ' - %s %s in %s.\n' \
             "$Current_doing" \
             "${1:-done}" "$(elapsed_since $doing_start)"
     fi
@@ -101,19 +110,11 @@ elapsed_since () {
     printf '%d.%03d s' $elapsed_seconds $subsecond_millis
 }
 
-ansi_color () {
-    printf '\e[%sm' "$1"
-}
-
-COLOR_NORMAL=$(ansi_color 0)
-COLOR_HIGHER=$(ansi_color '0;33')
-COLOR_LOWER=$(ansi_color '0;2')
-
 hilite () {
     if [ -n "$(tty)" ]; then
         sed12 \
-            "s/^(.{0,76}).*/    ${COLOR_LOWER}\\1${COLOR_NORMAL}/" \
-            "s/^(.{0,76}).*/    ${COLOR_HIGHER}\\1${COLOR_NORMAL}/" \
+            "s/^(.{0,76}).*/    ${COLOR_GRAY}\\1${COLOR_NORMAL}/" \
+            "s/^(.{0,76}).*/    ${COLOR_YELLOW}\\1${COLOR_NORMAL}/" \
             "$@"
     else
         sed12 "s/^/  › /" "s/^/  » /" "$@"
@@ -128,4 +129,17 @@ sed12 () {
         "$@" 2>&1 1>&3 | ubsed -E "$sed2" 1>&2
     } 3>&1 | ubsed -E "$sed1"
 }
+
+if_tty () {
+    if [ -n "$(tty)" ]; then
+        eval "$1=\$$2\$$1\$${3:-COLOR_NORMAL}"
+    fi
+}
+
+COLOR_NORMAL=$(ansi_color 0)
+COLOR_BLUE=$(ansi_color '0;34')
+COLOR_RED=$(ansi_color '0;31')
+COLOR_YELLOW=$(ansi_color '0;33')
+COLOR_GRAY=$(ansi_color '0;2')
+COLOR_BRIGHT=$(ansi_color '0;1')
 
