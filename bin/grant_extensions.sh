@@ -3,6 +3,9 @@
 . "$(dirname "$0")/.CASS"
 course_use find grade
 
+LANG=en_US.UTF-8
+export LANG
+
 # Grant extensions on homeworks
 #
 # -N            dry run -- don't actually extend
