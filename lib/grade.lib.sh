@@ -356,7 +356,7 @@ strip_comments () {
         sed '1d; s/X2/#/g; s/X1/__/g; s/X0/X/g'
 }
 
-_FNB='<code class=\"filename\">'
+_FNB='<code class="filename">'
 _FNE='</code>'
 assert_pattern_absence () {
     local points;       get_points
