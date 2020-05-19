@@ -433,7 +433,7 @@ assert_constant_absence () {
 }
 
 points_summary_tr () {
-    printf "<tr><th>%s</th><td class=\"numeric\">$2 </td></tr>\n" "$1" "$3"
+    printf "<tr><th>%s</th><td class='numeric'>$2 </td></tr>\n" "$1" "$3"
 }
 
 print_points_summary () {
