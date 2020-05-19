@@ -79,7 +79,8 @@ read_scores () (
 )
 
 possible_points () {
-    evaluate_test_log < "$(find_team_repo $hw starter)/tests.log"
+    local log; log=$(find_team_repo $hw starter)/tests.log
+    eval "$(elaborate_test_log + "$log")"
     echo $POINTS_POSSIBLE
 }
 
