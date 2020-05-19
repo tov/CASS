@@ -83,7 +83,8 @@ extend_one () {
 
     if bc_cond "$score < $goal"; then
         eprintf 'hw%02d/%s: Granting extension.\n' $hw $netid
-        $_N "$COURSE_BIN"/extend.sh -f $hw $netid tomorrow
+        $_N "$COURSE_BIN"/extend.sh -f $hw $netid \
+            tomorrow $(date +%H:59)
     else
         eprintf 'hw%02d/%s: No extension needed.\n' $hw $netid
     fi
