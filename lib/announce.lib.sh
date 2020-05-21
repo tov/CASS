@@ -53,11 +53,13 @@ announce () {
 }
 
 bg_doing () {
-    test -z "$QUIET" || return
-    current_bg_doing=$(printf "$@")
-    msgf '%s forked to background...\n' \
-        "$current_bg_doing"
-    bg_doing_start=$(current_millis)
+    if [ -n "$QUIET" ]; then
+        did forked
+    else
+        msgf '[forked]\n'
+        current_bg_doing=$current_doing
+        current_doing=
+    fi
 }
 
 bg_did () {
@@ -65,12 +67,10 @@ bg_did () {
 
     msgf '%s complete in %s.\n' \
         "$current_bg_doing" \
-        "$(elapsed_since $bg_doing_start)"
-
-    current_bg_doing=
+        "$(elapsed_since $doing_start)"
 }
 
-alias doing='trap "did error" RETURN; _doing_helper'
+alias doing='trap "did \"error return\"" RETURN; _doing_helper'
 
 _doing_helper () {
     Current_doing=$(printf "$@")
