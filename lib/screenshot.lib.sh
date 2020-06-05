@@ -18,6 +18,7 @@ screenshot_program () {
     COURSE_GRADE_TIMEOUT=15
 
     png=$1-screenshot.png
+    points=0
     program_test $1 \
         -m="Trying to start your <code class='filename'>$1</code>." \
         -x "/usr/local/bin/x_test.sh /hw/build/$1 /out/$png" \
