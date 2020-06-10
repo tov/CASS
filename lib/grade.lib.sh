@@ -398,6 +398,7 @@ extract_repeated_int_literals () {
         strip_comments "$1"
         shift
     done | sed -E '
+        /^[^[:space:]].*[[:<:]]const[[:>:]]/d
         /[[:<:]]const[[:>:]].*[[:<:]]Color[[:>:]]/d
         /[[:<:]]Color[[:>:]].*[[:<:]]const[[:>:]]/d
         :again
