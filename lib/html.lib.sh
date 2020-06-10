@@ -67,7 +67,11 @@ html_test_case () {
     printf '<summary>'
     textf '=====\n'
     textf '===== '
-    printf '<h3>%s</h3>\n' "$*"
+
+    printf '<h3>'
+    printf '%s' "$*"
+    printf '</h3>\n' "$*"
+
     printf '</summary>'
     textf '=====\n'
     printf '<div class="test-case-body">\n'

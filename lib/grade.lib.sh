@@ -11,22 +11,30 @@ tab_char=$(printf '\t')
 
 current_tag=0
 
-course_use docker html points
-# TODO: remove?
-course_use find
+course_use docker find html points
 
+_tester_tmpfiles=
 tester_on_exit () {
     if $html_in_test_case; then
         print_points_summary
     fi
+
+    local each
+    for each in $_tester_tmpfiles; do
+        rm -f $_tester_tmpfiles
+    done
+}
+
+new_tester_tmpfile () {
+    tmpfile=$(gmktemp -p '' grade_lib.${1:-strip_comments}.XXXXX)
+    set -- $_tester_tmpfiles $tmpfile
+    _tester_tmpfiles=$*
 }
 
 register_exit_function tester_on_exit
 
-auto_files_to_rm=
-
 run_all_tests () {
-    local points; get_points
+    local_get_points
 
     local stem
     local program
@@ -150,8 +158,7 @@ program_test () {
     local check_sh;     check_sh=$prefix.check.sh
     local message;      message=$prefix.msg
 
-    local old_points;   old_points=${points:-1}
-    local points;       points=$old_points
+    local_get_points
 
     local act_both;     act_both=$prefix.act-both
     local act_in;       act_in=$prefix.act-in
@@ -236,8 +243,7 @@ program_test () {
     sed '/^2 /!d; s/^..//' "$act_both" >|"$act_err"
     last_exitcode=$(cat "$act_exitcode")
 
-    html_test_case Test case $tag: \
-        "<code class='filename'>./$command</code>"
+    html_test_case Test case $tag: $(print_filename "./$command")
 
     if [ -f "$message" ]; then
         html_p "$(cat "$message")"
@@ -260,7 +266,7 @@ program_test () {
 }
 
 check_exitcode () {
-    local points; points=$1; shift
+    local_get_points
     case "$1" in
         =*)
             set -- "${1#=}"
@@ -294,7 +300,7 @@ display_output () {
 }
 
 check_output () {
-    local points; points=$1
+    local_get_points
     html_p Comparing actual $4 to expected $4.
     score_if cmp -s "$2" "$3"
 }
@@ -351,85 +357,240 @@ strip_comments () {
     find_gcc      || return 0
     test -e "$1"  || return 0
 
-    sed 's/X/X0/g; s/__/X1/g; s/#/X2/g' "$1" |
-        ${REAL_GCC} -fpreprocessed -dD -E - |
-        sed '1d; s/X2/#/g; s/X1/__/g; s/X0/X/g'
+    sed '
+        s/X/X0/g
+        s/__/X1/g
+        s/#/X2/g
+    ' "$1" |
+    ${REAL_GCC} -fpreprocessed -dD -E - |
+    sed -E '
+        1d
+        s/^#[[:space:]]*[[:digit:]]+.*//
+        s/X2/#/g
+        s/X1/__/g
+        s/X0/X/g
+    '
 }
 
-_FNB='<code class="filename">'
-_FNE='</code>'
-assert_pattern_absence () {
-    local points;       get_points
-    local TYPE;         TYPE=$1;        shift
-    local THING;        THING=$1;        shift
-    local pattern;      pattern=$1;     shift
-    local filename;     filename=$1;    shift
-    local FILE;         FILE=$_FNB$filename$_FNE
-    local FILEBASE;     FILEBASE=$_FNB${filename##*/}$_FNE
+arg_count () {
+    printf $#
+}
 
-    local srcfile;      srcfile=$filename
-    case "$filename" in
-        *.h|*.c|*.hxx|*.cxx)
-            local tmpfile
-            tmpfile=$(gmktemp -p '' grade_lib.stript_comments.XXXXXX)
-            trap 'rm -f "$tmpfile"' RETURN
-            strip_comments "$filename" > "$tmpfile"
-            srcfile=$tmpfile
+arg_count_EN () {
+    case $(arg_count "$@") in
+        0) printf Zero;;
+        1) printf One;;
+        2) printf Two;;
+        3) printf Three;;
+        4) printf Four;;
+        *) arg_count "$@";;
     esac
+}
 
-    html_test_case "Checking for $TYPE $THING in $FILEBASE"
-    html_p "$(eval "echo $*")"
-
-    if egrep -sq "$pattern" "$srcfile"; then
-        egrep -nC2 "$pattern" "$srcfile" 2>&1 |
-            html_grep_output "$pattern" || true
-        score_if false
-    else
-        score_if true
+args_to_pl () {
+    if [ $# != 1 ]; then
+        printf s
     fi
 }
 
+extract_repeated_int_literals () {
+    while [ $# -gt 0 ]; do
+        strip_comments "$1"
+        shift
+    done | sed -E '
+        /[[:<:]]const[[:>:]].*[[:<:]]Color[[:>:]]/d
+        /[[:<:]]Color[[:>:]].*[[:<:]]const[[:>:]]/d
+        :again
+            /(.*)[[:<:]]([[:digit:]]{2,})[[:>:]].*/! d
+            h
+            s//\2/
+            p
+            g
+            s//\1/
+        bagain
+    ' | sort | uniq -c | sed '
+        /^ *1 /d
+        s/^ *[[:digit:]]* //
+        /^10*$/d
+    '
+}
+
+print_filename () {
+    printf '<code class="filename">%s</code>' "$1"
+}
+
+print_filename_base () {
+    print_filename "${1##*/}"
+}
+
+print_conj_with () {
+    local printer; printer=$1; shift
+    case $# in
+        1)
+            $printer "$1"
+            ;;
+        2)
+            $printer "$1"
+            printf ' and '
+            $printer "$2"
+            ;;
+        *)
+            while [ $# -gt 1 ]; do
+                $printer "$1"
+                printf ', '
+                shift
+            done
+            printf ' and '
+            $printer "$1"
+            ;;
+    esac
+}
+
+_print_magic_int_appearances () {
+    local magic_int; magic_int=$1
+    local tmpfile;   new_tester_tmpfile
+
+    echo "<ul>"
+
+    local filename
+    for filename; do
+        strip_comments "$filename" > $tmpfile
+        if egrep -sq "\\b$magic_int\\b" $tmpfile; then
+            echo "<li>It appears in $(print_filename "$filename") here:"
+            egrep -nC1 "\\b$magic_int\\b" $tmpfile 2>&1 |
+                html_grep_output "$pattern" || true
+            echo "</li>"
+        fi
+    done
+
+    echo "</ul>"
+}
+
+assert_repeated_magic_int_absence () {
+    local_get_points
+    local magic_ints
+
+    html_test_case Checking for repeated magic '<code>int</code>' literals
+    html_p Unnamed literal constants \(“magic numbers”\) make your \
+        code harder to understand and harder to change. Repeating the \
+        same magic number in more than one place is especially bad. \
+        This test checks for repeated integer literals \(excluding \
+        single-digit numbers and powers of 10, since those often appear \
+        for legitimate reasons\).
+
+    magic_ints=$(extract_repeated_int_literals "$@")
+    if [ -z "$magic_ints" ]; then
+        score_if true
+    else
+        html_subhead Found $(arg_count_EN $magic_ints) Repeated Magic \
+            Number$(args_to_pl $magic_ints):
+        echo "<ul>"
+
+        local magic_int
+        for magic_int in $magic_ints; do
+            echo "<li>$magic_int is magic:"
+            _print_magic_int_appearances $magic_int "$@"
+            echo "</li>"
+        done
+
+        echo "</ul>"
+        score_if false
+    fi
+}
+
+assert_pattern_absence () {
+    local_get_points
+    local success;      success=true
+    local tmpfile;      tmpfile=
+    local TYPE;         TYPE=$1;        shift
+    local THING;        THING=$1;       shift
+    local pattern;      pattern=$1;     shift
+    local explanation;  explanation=
+
+    while [ "$1" != -- ]; do
+        explanation="$explanation${explanation:+ }$1"
+        shift
+    done
+    shift
+
+    local FILE_PL=$(args_to_pl "$@")
+    local FILE=$(print_conj_with print_filename "$@")
+    local FILEBASE=$(print_conj_with print_filename_base "$@")
+
+    html_test_case Checking for $TYPE $THING in $FILEBASE
+    html_p "$(eval "echo \"$explanation\"")"
+
+    local srcfile
+    local filename
+    for filename; do
+        srcfile=$filename
+        case "$filename" in
+            *.h|*.c|*.hxx|*.cxx|*.hpp|*.cpp)
+                new_tester_tmpfile
+                strip_comments "$filename" >"$tmpfile"
+                srcfile=$tmpfile
+        esac
+
+        if egrep -sq "$pattern" "$srcfile"; then
+            success=false
+            html_subhead "Found in $(print_filename "$filename")"
+            egrep -nC2 "$pattern" "$srcfile" 2>&1 |
+                html_grep_output "$pattern" || true
+        fi
+    done
+
+    score_if $success
+}
+
 assert_function_absence () {
-    local points; get_points
+    local_get_points
     local funname; funname=$1; shift
-    local filename; filename=$1; shift
 
     assert_pattern_absence 'calls to function' "<var>$funname</var>" \
-        "\\b$funname *[(]" "$filename" \
-        File \$FILE should not contain code that calls function \
-        \$THING directly.
+        "\\b$funname *[(]" \
+        File\$FILE_PL \$FILE should not contain code that calls function \
+        \$THING directly. \
+        -- "$@"
 }
 
 _warning_pat='^[^ ]*: (warning|note): '
 assert_warning_absence () {
-    local points; get_points
-    local filename; filename=$1; shift
+    local_get_points
 
     assert_pattern_absence compilation warnings \
-        "$_warning_pat" "$filename" \
-        There should not be any warnings when compiling your code.
+        "$_warning_pat" \
+        There should not be any warnings when compiling your code. \
+        -- "$@"
 }
 
 assert_mention_absence () {
-    local points; get_points
+    local_get_points
     local thingname; thingname=$1; shift
     local pattern; pattern=$1; shift
-    local filename; filename=$1; shift
 
     assert_pattern_absence 'mentions of' "$thingname" \
-        "$pattern" "$filename" "$@"
+        "$pattern" "$@"
 }
 
 assert_constant_absence () {
-    local points; get_points
+    local_get_points
     local constval; constval=$1; shift
-    local filename; filename=$1; shift
 
     assert_pattern_absence literal "<var>$constval</var>" \
-        "\\b$constval\\b" "$filename" \
+        "\\b$constval\\b" \
         Magic numbers like \$THING shouldn’t appear directly in your \
         code because they make it less portable, harder to \
-        understand, and harder to change.
+        understand, and harder to change. \
+        -- "$@"
+}
+
+assert_using_directive_absence () {
+    local_get_points
+    assert_pattern_absence '<code>using</code> directive' '' \
+        'using[[:space:]]+namespace' \
+        The '<code>using</code>' directive should not be used in \
+        header files. \
+        -- "$@"
 }
 
 points_summary_tr () {
@@ -437,7 +598,7 @@ points_summary_tr () {
 }
 
 print_points_summary () {
-    if [ $possible = 0 ]; then
+    if [ "$possible" = 0 ]; then
         html_p No points possible.
         echo 0.01
         return

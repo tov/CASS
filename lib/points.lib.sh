@@ -7,13 +7,15 @@ get_points_helper () {
             false
             ;;
         *)
-            points=1
+            points=${points:-1}
             true
             ;;
     esac
 }
 
+alias local_points='local old_points; old_points=${points-}; local points; points=$old_points'
 alias get_points='get_points_helper "$@" || shift'
+alias local_get_points='local_points; get_points'
 
 add_to () {
     local var
