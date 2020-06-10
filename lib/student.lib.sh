@@ -12,6 +12,10 @@ first () {
     fi
 }
 
+real_first () {
+    first "$1" | sed 's/ .*//'
+}
+
 last () {
     cat $COURSE_DB/students/$1/last
 }
