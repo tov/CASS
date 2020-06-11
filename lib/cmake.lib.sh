@@ -1,17 +1,18 @@
 # CMake helpers
 
 perl_find_cmake_command_arg1='
-    $_ = join "", <STDIN>;
-    print "$1\n" while /\b$ARGV[0]\s*\(\s*([-_[:alnum:]]+)/ig
+    my $inp = join "", grep /^\s*[^#]/, <STDIN>;
+    my $pat = join "|", @ARGV;
+    my $re  = qr/\b(?:$pat) \s*\(\s* ([-_[:alnum:]]+)/ix;
+    print "$1\n" while $inp =~ /$re/ig;
 '
 
 find_cmake_command_arg1 () {
-    perl -e "$perl_find_cmake_command_arg1" "$1" < CMakeLists.txt
+    perl -e "$perl_find_cmake_command_arg1" "$@" < CMakeLists.txt
 }
 
 find_cmake_programs () {
-    find_cmake_command_arg1 add_program
-    find_cmake_command_arg1 add_executable
+    find_cmake_command_arg1 add_program add_executable
 }
 
 find_cmake_test_programs () {
