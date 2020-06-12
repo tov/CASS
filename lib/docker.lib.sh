@@ -39,11 +39,12 @@ try_docker_start () {
             ;;
         test)
             local workdir
-            workdir=/hw$(
-                if [ -d build ]; then
-                    echo /build
-                fi
-            )
+            if [ -d build ]; then
+                workdir=/hw/build
+            else
+                workdir=/hw
+            fi
+            mkdir -p out
             CURRENT_CONTAINER=$(
                 docker run \
                     --name "$name" \
