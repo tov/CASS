@@ -26,7 +26,7 @@ screenshot_program () {
 
     if [ -f "out/$png" ]; then
         url=/gsc/files/$TEST_NETID/$TEST_HW/$png
-        html_subhead Screenshot:
+        html_p Here’s your screenshot:
         printf '<p class="screenshot">'
         printf '<a href="%s" target="_blank">' "$url"
         printf '<img src="%s" alt="Screenshot of %s"/>' "$url" "$1"
