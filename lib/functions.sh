@@ -519,6 +519,11 @@ short_prog_name () {
     fi
 }
 
+dir_is_empty () {
+    ! test -d "$1" ||
+        find "$1" -maxdepth 0 -empty | read
+}
+
 sed_has_unbuffered () {
     "$1" --unbuffered '' </dev/null
 }
