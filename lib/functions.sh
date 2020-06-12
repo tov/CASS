@@ -403,7 +403,7 @@ resolve_student () {
 }
 
 print_student_property () {
-    cat "$COURSE_DB"/students/$1/$2
+    cat "$COURSE_DB"/students/$1/$2 | tr -d '\n'
 }
 
 print_student_info () {

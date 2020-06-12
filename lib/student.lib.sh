@@ -6,7 +6,7 @@ email () {
 
 first () {
     if [ "$1" = '-' ]; then
-        sed 's/ .*//' $COURSE_DB/students/$2/first
+        sed 's/ .*//' $COURSE_DB/students/$2/first | tr -d '\n'
     else
         cat $COURSE_DB/students/$1/first
     fi
@@ -25,7 +25,7 @@ call_me () {
 }
 
 name () {
-    echo `first $1; last $1`
+    printf '%s %s' "$(first $1)" "$(last $1)"
 }
 
 called () {
