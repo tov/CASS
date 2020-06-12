@@ -23,5 +23,15 @@ screenshot_program () {
         -m="Trying to start your <code class='filename'>$1</code>." \
         -x "/usr/local/bin/x_test.sh /hw/build/$1 /out/$png" \
         -c 0
+
+    if [ -f "out/$png" ]; then
+        url=/gsc/files/$TEST_NETID/$TEST_HW/$png
+        html_subhead Screenshot:
+        printf '<p class="screenshot">'
+        printf '<a href="%s" target="_blank">' "$url"
+        printf '<img src="%s" alt="Screenshot of %s"/>' "$url" "$1"
+        printf '</a>'
+        printf '</p>\n'
+    fi
 }
 
