@@ -1,58 +1,78 @@
 # Library for printing out student info
 
+format_list () {
+    local each;    each=$1; shift
+    local between; between=$1; shift
+    local argc0;   argc0=$#
+    while [ $# -gt 1 ]; do
+        $each "$1"
+        shift
+        ARGC=$# ARGC0=$argc0 $between
+    done
+    $each "$1"
+}
+
+sep_comma_and () {
+    if [ "$ARGC0" = 2 ]; then
+        printf ' and '
+    elif [ "$ARGC" = 1 ]; then
+        printf ', and '
+    else
+        printf ', '
+    fi
+}
+
 email () {
-    cat $COURSE_DB/students/$1/email
+    print_student_property $1 email
 }
 
 first () {
     if [ "$1" = '-' ]; then
-        sed 's/ .*//' $COURSE_DB/students/$2/first | tr -d '\n'
+        print_student_property $2 first | sed 's/ .*//' | tr -d '\n'
     else
-        cat $COURSE_DB/students/$1/first
+        print_student_property $1 first
     fi
 }
 
-real_first () {
-    first "$1" | sed 's/ .*//'
-}
-
 last () {
-    cat $COURSE_DB/students/$1/last
+    print_student_property $1 last
 }
 
 call_me () {
-    cat $COURSE_DB/students/$1/call-me
+    print_student_property $1 call-me
 }
 
-name () {
+canvasid () {
+    print_student_property $1 canvasid
+}
+
+githubid () {
+    print_student_property $1 githubid
+}
+
+full_name () {
     printf '%s %s' "$(first $1)" "$(last $1)"
 }
 
 called () {
-    call_me $1 || name $1
+    call_me $1 2>/dev/null || first - $1
 }
 
-canvasid () {
-    cat $COURSE_VAR/students/$1/canvasid
+format_address () {
+    printf '"%s" <%s>' "$(full_name $1)" "$(email $1)"
 }
 
-githubid () {
-    cat $COURSE_DB/students/$1/githubid
+email_list () {
+    format_list email 'printf \x20' "$@"
 }
 
-resolve_student () {
-    find_single "student matching $1" $(resolve_student_helper "$1")
+greeting_list () {
+    format_list called sep_comma_and "$@"
 }
 
-resolve_student_helper () (
-    cd "$COURSE_VAR/students"
-
-    for dir in *; do
-        if cat $dir/* | tr '\n' ' ' | grep -i -q "$1"; then
-            basename "$dir"
-        fi
-    done
-)
+format_to_line () {
+    format_list format_address 'printf ,\x20' "$@"
+}
 
 find_student_by_name () {
     eval "$(getargs + last first)"
