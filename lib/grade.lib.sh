@@ -397,12 +397,12 @@ extract_repeated_int_literals () {
     while [ $# -gt 0 ]; do
         strip_comments "$1"
         shift
-    done | sed -E '
-        /^[^[:space:]].*[[:<:]]const[[:>:]]/d
-        /[[:<:]]const[[:>:]].*[[:<:]]Color[[:>:]]/d
-        /[[:<:]]Color[[:>:]].*[[:<:]]const[[:>:]]/d
+    done | gsed -E '
+        /^[^[:space:]].*\<const\>/d
+        /\<const\>.*\<Color\>/d
+        /\<Color\>.*\<const\>/d
         :again
-            /(.*)[[:<:]]([[:digit:]]{2,})[[:>:]].*/! d
+            /(.*)\<([[:digit:]]{2,})\>.*/! d
             h
             s//\2/
             p
