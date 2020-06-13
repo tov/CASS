@@ -89,6 +89,12 @@ generate_install_sh_helper () (
             ln -s "bin/$file" "$HOME/"
         }
 
+        dir_is_empty () {
+            ! test -d "$1" ||
+                find "$1" -maxdepth 0 -empty |
+                    read >/dev/null 2>&1
+        }
+
         install_dir () {
             local src; src=$1; shift
             local dst; dst=$1; shift
@@ -117,7 +123,9 @@ generate_install_sh_helper () (
             esac
         done
 
-        if [ -d Resources ]; then
+        if dir_is_empty Resources; then
+            depend_on "$src" "$@"
+        else
             install_dir Resources "$HOME/Resources" "$@"
         fi
 
