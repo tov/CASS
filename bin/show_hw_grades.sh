@@ -85,7 +85,11 @@ possible_points () {
 }
 
 sort_scores () {
-    sort $flag_r $sort_opts
+    if [ -z "$flag_r$sort_opts" ]; then
+        cat
+    else
+        sort $flag_r $sort_opts
+    fi
 }
 
 build_histogram () {
