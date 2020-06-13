@@ -9,7 +9,6 @@ docker_lib_on_exit () {
 }
 
 register_exit_function docker_lib_on_exit
-
 docker_kill_on_exit () {
     set -- ${docker_kill_on_exit_list-} $*
     docker_kill_on_exit_list=$*
@@ -38,6 +37,7 @@ try_docker_start () {
             export CURRENT_BUILD_CONTAINER
             ;;
         test)
+            set_docker_host
             local workdir
             if [ -d build ]; then
                 workdir=/hw/build
@@ -50,6 +50,7 @@ try_docker_start () {
                     --name "$name" \
                     --rm --read-only --init --detach \
                     --tmpfs /tmp \
+                    --env PULSE_SERVER="$DOCKER_HOST" \
                     --volume "$(pwd):/hw:ro" \
                     --volume "$(pwd)/out:/out:rw" \
                     --workdir "$workdir" \
@@ -175,4 +176,27 @@ docker_test () {
         echo $? >|"$exitcodefile"
     fi
 }
+
+set_docker_host () {
+    if [ -n "$DOCKER_HOST" ]; then
+        return
+    elif DOCKER_HOST=$(get_docker_host_linux) && [ -n "$DOCKER_HOST" ]; then
+        return
+    elif DOCKER_HOST=$(get_docker_host_mac) && [ -n "$DOCKER_HOST" ]; then
+        return
+    else
+        DOCKER_HOST=host.docker.internal
+    fi
+}
+
+get_docker_host_linux () {
+    ip -4 addr show docker0 | grep -Po 'inet \K[\d.]+'
+} 2>/dev/null
+
+get_docker_host_mac () {
+    ifconfig en0 | sed -E '
+        /^[[:space:]]*inet ([0-9.]+) .*$/ ! d
+        s//\1/
+    '
+} 2>/dev/null
 
