@@ -1,7 +1,7 @@
 #!/bin/sh
 
 . "$(dirname "$0")/.CASS"
-course_use find grade
+course_use find gsc grade student
 
 # Shows the automated-test results for hw$hw.
 #
@@ -20,9 +20,11 @@ process_arguments () {
 
     if [ -z "$flag_P" ]; then
         format='%5.1f%%'
+        format_len=6
         points=100
     else
         format='%3.0f'
+        format_len=3
         points=$(possible_points)
     fi
 
@@ -45,14 +47,24 @@ print_score () {
     fi
 
     if [ -z "$flag_d" ]; then
-        printf '%-15s ' "$netid"
+        printf '%-10s' "$netid"
     fi
 
     if [ "$score" = - ]; then
-        printf '%s\n' ---
+        printf "  %-{format_len}s  " ---
     else
-        printf "$format\n" "$(bc_expr "$points * $score")"
+        printf "  $format  " "$(bc_expr "$points * $score")"
     fi
+
+    if [ -z "$flag_d" ]; then
+        team_info $netid
+    fi
+
+    echo
+}
+
+team_info () {
+    format_list 'full_name -' 'printf ,\x20' $(gsc_partners $hw $1)
 }
 
 select_netids () {
