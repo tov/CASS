@@ -22,44 +22,64 @@ sep_comma_and () {
     fi
 }
 
-email () {
-    print_student_property $1 email
+print_student_property_short () {
+    local value; value=$(print_student_property $1 "$2")
+    printf %s "${value%% *}"
 }
 
-first () {
-    if [ "$1" = '-' ]; then
-        print_student_property $2 first | sed 's/ .*//' | tr -d '\n'
+get_student_property () {
+    if [ $# = 2 ]; then
+        print_student_property $1 "$2"
+    elif [ "$1" = - ]; then
+        print_student_property_short "$2" "$3"
+    elif [ "$2" = - ]; then
+        print_student_property $1 "$3"
+    elif [ "$3" = - ]; then
+        print_student_property $1 "$2"
     else
-        print_student_property $1 first
+        print_student_property $1 "$2"
     fi
 }
 
+get_student_property_long () {
+    [ "$1" != - ] || shift
+    print_student_property $1 $2
+}
+
+first () {
+    get_student_property "$@" first
+}
+
 last () {
-    print_student_property $1 last
+    get_student_property "$@" last
+}
+
+email () {
+    get_student_property_long "$@" email
 }
 
 call_me () {
-    print_student_property $1 call-me
+    get_student_property_long "$@" call-me
 }
 
 canvasid () {
-    print_student_property $1 canvasid
+    get_student_property_long "$@" canvasid
 }
 
 githubid () {
-    print_student_property $1 githubid
-}
-
-full_name () {
-    printf '%s %s' "$(first $1)" "$(last $1)"
+    get_student_property_long "$@" githubid
 }
 
 called () {
     call_me $1 2>/dev/null || first - $1
 }
 
+full_name () {
+    printf '%s %s' "$(first "$@")" "$(last "$@")"
+}
+
 format_address () {
-    printf '"%s" <%s>' "$(full_name $1)" "$(email $1)"
+    printf '"%s" <%s>' "$(full_name "$@")" "$(email "$@")"
 }
 
 email_list () {
