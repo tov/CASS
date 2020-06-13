@@ -8,7 +8,9 @@ perl_find_cmake_command_arg1='
 '
 
 find_cmake_command_arg1 () {
-    perl -e "$perl_find_cmake_command_arg1" "$@" < CMakeLists.txt
+    if [ -e CMakeLists.txt ]; then
+        perl -e "$perl_find_cmake_command_arg1" "$@" < CMakeLists.txt
+    fi
 }
 
 find_cmake_programs () {
