@@ -6,13 +6,14 @@ course_use find gsc grade student
 # Shows the automated-test results for hw$hw.
 #
 #  -P           show raw points instead of percentages
+#  -n           show full names
 #  -d           show distribution (implies -s)
 #  -s           sorted by score
 #  -r           sorted by score, descending
 #  -2           don't dedup partners
 
 process_arguments () {
-    eval "$(getargs -Pdsr2 hw netids...)"
+    eval "$(getargs -Pndsr2 hw netids...)"
 
     if [ -n "$flag_d" -a -n "$netids" ]; then
         cass_error 1 "cannot combine -d flag with NetID(s)"
@@ -56,7 +57,7 @@ print_score () {
         printf "  $format  " "$(bc_expr "$points * $score")"
     fi
 
-    if [ -z "$flag_d" ]; then
+    if [ -z "$flag_d" -a -n "$flag_n" ]; then
         team_info $netid
     fi
 
