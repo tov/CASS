@@ -69,10 +69,11 @@ course_init_env () {
 
     . "$COURSE_ETC/config.sh"
 
-    local i
-    for i in "$COURSE_ETC"/*.env; do
-        course_eval_env "$i"
-    done
+    eval "$(
+        find "$COURSE_ETC" \
+            -type f -name '*.env' \
+            -exec echo 'course_eval_env "{}"' \;
+    )"
 }
 
 CASS_on_exit_list=
