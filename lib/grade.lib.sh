@@ -11,7 +11,7 @@ tab_char=$(printf '\t')
 
 current_tag=0
 
-course_use docker find html points
+course_use docker find html points quote
 
 _tester_tmpfiles=
 tester_on_exit () {
@@ -124,23 +124,8 @@ get_param_helper () {
 
 alias get_param='get_param_helper "$@" || shift; shift'
 
-shellsafe_print () {
-    printf '%s' "$1" | sed "
-        s/'/'\\\\''/g
-        s/^/'/
-        s/\$/'/
-    " | tr -d '\n'
-}
-
 do_later () {
-    {
-        shellsafe_print "$1"
-        while shift; do
-            printf ' '
-            shellsafe_print "$1"
-        done
-        printf '\n'
-    } >> "$check_sh"
+    shell_quote_words "$@" >> "$check_sh"
 }
 
 skip_program_test () {
@@ -627,28 +612,6 @@ print_points_summary () {
     else
         bc_expr "$actual / $possible"
     fi
-}
-
-c_quote_string () {
-    printf '%s\n' "$2"          |
-        ubsed -E '
-            s/\\/&&/g
-            s/'"$1"'/\\&/g
-            s/	/\\t/g
-            s/'"$del_char"'/\\x7F/g
-            2,$s/^/\\n/
-            1s/^/'"$1"'/
-            $s/$/'"$1"'/
-        '                       |
-        tr -d '\n'
-}
-
-cdq () {
-    c_quote_string \" "$1"
-}
-
-csq () {
-    c_quote_string \' "$1"
 }
 
 detect_language () {
