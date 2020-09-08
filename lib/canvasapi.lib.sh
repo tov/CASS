@@ -2,27 +2,46 @@
 
 course_load_var CANVAS_OAUTH canvas_oauth.secret
 
-canvas_curl () {
-    eval "$(getargs + verb path ...)"
+course_use quote
 
-    if [ -z "$CANVAS_OAUTH" ]; then
+canvas_curl () {
+    local maybe
+    local token
+    local uri
+
+    if [ "$1" = --dry-run ]; then
+        shift
+        maybe=shell_quote_words
+        token='<OAUTH_TOKEN>'
+    elif [ -n "$CANVAS_OAUTH" ]; then
+        maybe=
+        token=$CANVAS_OAUTH
+    else
         echo >&2 "$0: CANVAS_OAUTH not set"
         return 1
     fi
 
-    local uri
+    eval "$(getargs + verb path ...)"
+
+    verb=$(printf %s "$verb" | tr a-z A-Z)
 
     case "$path" in
         https://*)
             uri=$path
+            ;;
+        c/*)
+            uri=$canvas_course_api/${path#c/}
+            ;;
+        /*)
+            uri=$canvas_api$path
             ;;
         *)
             uri=$canvas_api/$path
             ;;
     esac
 
-    curl -s -X "$verb" \
-        -H "Authorization: Bearer $CANVAS_OAUTH" \
+    $maybe curl --silent --request "$verb" \
+        --header "Authorization: Bearer $token" \
         "$@" "$uri"
 }
 
