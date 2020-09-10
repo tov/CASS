@@ -49,7 +49,8 @@ function nextUrl(headers) {
 }
 
 async function main() {
-  for await (let each of get(`/courses/${course_id}/users`)) {
+  const uri = `/courses/${course_id}/users?enrollment_types[]=student`
+  for await (let each of get(uri)) {
     console.log(each)
   }
 }
