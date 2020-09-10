@@ -24,7 +24,7 @@ load_cass_please () {
     # WARNING: ^^^ don't export this
 
     # Load helpful functions
-    . "$COURSE_ROOT/.CASS/lib/functions.sh"
+    . "$course_cass/lib/functions.sh"
 
     # Initialize the course environment
     course_init_env
