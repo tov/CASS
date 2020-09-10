@@ -1,0 +1,57 @@
+#!/usr/bin/env -S deno run --allow-read --allow-net
+// vim: se ft=javascript:
+
+const api_base    = `https://canvas.northwestern.edu/api/v1`
+const course_id   = 120095
+const secret_file = `../etc/canvas_oauth.secret`
+
+const decoder     = new TextDecoder('utf-8')
+
+async function load_secret() {
+  return decoder.decode(await Deno.readFile(secret_file))
+}
+
+const secret = load_secret()
+
+async function fetch_auth(url, method) {
+  return fetch(url, {
+    method,
+    headers: { Authorization: `Bearer ${await secret}` },
+    redirect: 'follow',
+    referrerPolicy: 'no-referrer',
+  })
+}
+
+async function* get(path = '', {method = 'GET'} = {}) {
+  let response = await fetch_auth(`${api_base}${path}`, method)
+
+  for (let url; (url = nextUrl(response.headers)); ) {
+    const [json, next] = await Promise.all([
+      response.json(),
+      fetch_auth(url, method)
+    ])
+
+    yield json
+    response = next
+  }
+
+  yield response.json()
+}
+
+const nextRelRE = /<([^>]*)>; *rel="next"/
+
+function nextUrl(headers) {
+  const link_header = headers.get('Link')
+  if (!link_header) return undefined
+
+  const result = link_header.match(nextRelRE)
+  if (result) return result[1]
+}
+
+async function main() {
+  for await (let each of get(`/courses/${course_id}/users`)) {
+    console.log(each)
+  }
+}
+
+main().then(_ => 0)
