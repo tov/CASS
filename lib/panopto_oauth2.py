@@ -2,6 +2,7 @@ import json
 import os
 import pickle
 import requests
+import sys
 import time
 import webbrowser
 
@@ -67,10 +68,10 @@ class PanoptoOAuth2():
         session.verify = self.ssl_verify
 
         # Open the authorization page by the browser.
-        authorization_url, state = session.authorization_url(self.authorization_endpoint)
-        print()
-        print('Opening the browser for authorization: {0}'.format(authorization_url))
-        webbrowser.open_new_tab(authorization_url)
+        auth_url, state = session.authorization_url(self.authorization_endpoint)
+        print('Opening the browser for authorization: {0}'.format(auth_url),
+                file=sys.stderr)
+        webbrowser.open_new_tab(auth_url)
 
         # Launch HTTP server to receive the redirect after authorization.
         redirected_path = ''
