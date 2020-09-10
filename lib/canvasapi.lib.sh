@@ -4,7 +4,9 @@ course_load_var CANVAS_OAUTH canvas_oauth.secret
 
 course_use quote
 
+canvas_api=https://$canvas_host/api/v1
 canvas_api_course=$canvas_api/courses/$canvas_course_id
+canvas_api_graphql=https://$canvas_host/api/graphql
 
 canvas_curl () {
     local maybe
@@ -33,6 +35,13 @@ canvas_curl () {
             ;;
         c/*)
             uri=$canvas_api_course/${path#c/}
+            ;;
+        g:*)
+            uri=$canvas_api_graphql
+            verb=POST
+            set -- "$@" \
+                   -d "query=${path#g:}" \
+                   -d "variables[courseId]=$canvas_course_id"
             ;;
         /*)
             uri=$canvas_api$path
