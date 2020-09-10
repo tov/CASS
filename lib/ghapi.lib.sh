@@ -3,6 +3,8 @@
 
 course_load_var GITHUB_OAUTH github_oauth.secret
 
+course_use apicommon
+
 ghapi_curl () {
     eval "$(getargs + verb path ...)"
 
@@ -72,27 +74,8 @@ ghapi_branch_protection () {
         ${data:+--data "$data"}
 }
 
-extract_rel_link () {
-    eval "$(getargs + type)"
-    sed '
-        s/^Link: .*<\([^>]*\)>; *rel="'"$type"'".*/\1/
-        t found
-        d
-        :found
-    '
-}
-
 ghapi_get_all_pages () {
-    eval "$(getargs + uri)"
-
-    local headers
-    headers=$(mktemp -t ghapi-headers.XXXXXX)
-
-    while [ -n "$uri" ]; do
-        ghapi_curl GET "$uri" -D"$headers"
-        uri=$(extract_rel_link next <"$headers")
-        cat /dev/null > "$headers"
-    done
+    get_all_pages 'ghapi_curl GET' "$1"
 }
 
 ghapi_list_hw_repos () {
