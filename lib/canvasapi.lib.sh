@@ -4,6 +4,8 @@ course_load_var CANVAS_OAUTH canvas_oauth.secret
 
 course_use quote
 
+canvas_api_course=$canvas_api/courses/$canvas_course_id
+
 canvas_curl () {
     local maybe
     local token
@@ -30,7 +32,7 @@ canvas_curl () {
             uri=$path
             ;;
         c/*)
-            uri=$canvas_course_api/${path#c/}
+            uri=$canvas_api_course/${path#c/}
             ;;
         /*)
             uri=$canvas_api$path
@@ -60,7 +62,7 @@ URI_user_group_categories () {
 }
 
 URI_course_group_categories () {
-    join_uri $canvas_course_api group_categories
+    join_uri $canvas_api_course group_categories
 }
 
 URI_group_category () {
