@@ -2,7 +2,7 @@
 
 course_load_var CANVAS_OAUTH canvas_oauth.secret
 
-course_use quote
+course_use apicommon quote
 
 canvas_api=https://$canvas_host/api/v1
 canvas_api_course=$canvas_api/courses/$canvas_course_id
@@ -92,6 +92,11 @@ URI_group_membership () {
 
 
 ## Requests
+
+canvas_api_list_students () {
+    get_all_pages 'canvas_curl GET' c/users \
+        -F 'enrollment_type[]=student'
+}
 
 canvas_api_create_group_cat () {
     eval "$(getargs + name)"
