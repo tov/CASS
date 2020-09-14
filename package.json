@@ -5,8 +5,8 @@
     "author": "Jesse Tov",
     "license": "MIT",
     "dependencies": {
-        "bent": "^7.3.10",
         "commander": "^6.1.0",
-        "form-urlencoded": "^4.2.1"
+        "form-urlencoded": "^4.2.1",
+        "node-fetch": "^2.6.1"
     }
 }
