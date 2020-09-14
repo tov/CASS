@@ -1,5 +1,4 @@
 const fs         = require('fs')
-const {readFile} = require('fs/promises')
 const path       = require('path')
 const process    = require('process')
 
@@ -95,17 +94,17 @@ class Cass {
     return this.base('var', 'cache', ...rest)
   }
 
-  async loadEtc(...path) {
-    return readFile(this.etc(...path), 'utf8')
+  loadEtc(...path) {
+    return fs.readFileSync(this.etc(...path), 'utf8')
   }
 
-  async loadSecret(name) {
-    return rtrim(await this.loadEtc(`${name}.secret`))
+  loadSecret(name) {
+    return rtrim(this.loadEtc(`${name}.secret`))
   }
 
-  async loadConfig(name) {
+  loadConfig(name) {
     const filename = `${name}.config`
-    return parseConfig(await this.loadEtc(filename), filename)
+    return parseConfig(this.loadEtc(filename), filename)
   }
 }
 

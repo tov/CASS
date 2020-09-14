@@ -3,11 +3,10 @@
 const CanvasApi  = require('./cass/canvas-api')
 
 async function main() {
-  const canvas = new CanvasApi(undefined, {verbose: true})
-
-  for (const each of await canvas.getModules()) {
-    await canvas.deleteModule(each.id)
-  }
+  const canvas   = new CanvasApi(undefined, {verbose: true})
+  const modules  = await canvas.getModules()
+  const promises = modules.map(each => canvas.deleteModule(each.id))
+  await Promise.all(promises)
 }
 
 main().then(_ => 0, console.log)

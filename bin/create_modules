@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --trace-warnings
 
 const Cass         = require('./cass')
 const CanvasApi    = require('./cass/canvas-api')
@@ -11,7 +11,7 @@ async function main() {
 
   const modules = await fs.readFile(cass.base('modules.json'), 'utf8')
 
-  for (const each of ModuleList.fromJSON(modules))
+  for (const each of ModuleList.fromJSON(cass, modules))
     await each.create(canvas)
 }
 

@@ -17,16 +17,20 @@ const moduleItemsUri = (C, id) =>
   courseUri(C, `modules/${id}/items`)
 
 class CanvasApi extends RestClient {
-  constructor(cass = new (require('../cass')), {verbose = false} = {}) {
-    super()
+  constructor(cass = new (require('../cass')), {
+    dry_run = false,
+    verbose = false,
+  } = {}) {
+    super({dry_run})
     this._cass   = cass
     this._secret = cass.loadSecret('canvas_oauth')
     this._config = cass.loadConfig('canvas')
+    this.dry_run = dry_run
     this.verbose = verbose
   }
 
   async* getUsers(params) {
-    const uri = usersUri(await this._config, params)
+    const uri = usersUri(this._config, params)
     for await (const response of this.fetchAll(uri)) {
       for (const user of await response.json()) {
         yield user
@@ -35,7 +39,7 @@ class CanvasApi extends RestClient {
   }
 
   async getModules() {
-    const uri = modulesUri(await this._config)
+    const uri = modulesUri(this._config)
 
     let result = []
     for await (const response of this.fetchAll(uri)) {
@@ -47,27 +51,27 @@ class CanvasApi extends RestClient {
 
   async createModule(name, opts = {}) {
     this._log({createModule: name})
-    const uri = modulesUri(await this._config)
+    const uri = modulesUri(this._config)
     const module = {...opts, name}
     return this.POST(uri, {module})
   }
 
   async publishModule(id, published = true) {
     this._log({publishModule: id})
-    const uri = modulesUri(await this._config, id)
+    const uri = modulesUri(this._config, id)
     const module = {published}
     return this.PUT(uri, {module})
   }
 
   async deleteModule(id) {
     this._log({deleteModule: id})
-    const uri = modulesUri(await this._config, id)
+    const uri = modulesUri(this._config, id)
     return this.DELETE(uri)
   }
 
   async createModuleItem(id, module_item) {
     this._log({createModuleItem: module_item})
-    const uri = moduleItemsUri(await this._config, id)
+    const uri = moduleItemsUri(this._config, id)
     return this.POST(uri, {module_item})
   }
 

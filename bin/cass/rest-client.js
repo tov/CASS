@@ -10,9 +10,15 @@ const buildUri = (base, path, query) => {
 }
 
 class RestClient {
+  constructor({dry_run = false} = {}) {
+    this.dry_run = dry_run
+  }
+
   async fetch(uri, opts = {}) {
+    const method = opts.method || 'GET'
+
     const realOpts = {
-      method: opts.method || 'GET',
+      method,
       headers: {
         Authorization: `Bearer ${await this._secret}`
       },
@@ -23,6 +29,11 @@ class RestClient {
     if (opts.body) {
       realOpts.headers['Content-Type'] = 'application/x-www-form-urlencoded'
       realOpts.body = encode(opts.body)
+    }
+
+    if (this.dry_run && method !== 'GET') {
+      console.log('fetch(%O, %O)', uri, realOpts)
+      return {}
     }
 
     const response = await fetch(uri, realOpts)
