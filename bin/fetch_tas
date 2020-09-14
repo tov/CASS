@@ -1,0 +1,12 @@
+#!/usr/bin/env node
+
+const CanvasApi = require('./cass/canvas-api')
+
+async function main() {
+  const canvas = new CanvasApi
+  for await (const each of canvas.getUsers({enrollment_type: 'ta'})) {
+    console.log(each)
+  }
+}
+
+main().then(_ => 0, console.log)
