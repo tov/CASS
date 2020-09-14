@@ -47,6 +47,12 @@ class CanvasApi extends RestClient {
     return this.fetch(uri, {method: 'POST', body: {module}})
   }
 
+  async publishModule(id, published = true) {
+    const uri = modulesUri(await this._config, id)
+    const module = {published}
+    return this.fetch(uri, {method: 'PUT', body: {module}})
+  }
+
   async deleteModule(id) {
     const uri = modulesUri(await this._config, id)
     return this.fetch(uri, {method: 'DELETE'})
