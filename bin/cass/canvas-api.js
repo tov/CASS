@@ -17,11 +17,12 @@ const moduleItemsUri = (C, id) =>
   courseUri(C, `modules/${id}/items`)
 
 class CanvasApi extends RestClient {
-  constructor(cass = new (require('../cass'))) {
+  constructor(cass = new (require('../cass')), {verbose = false} = {}) {
     super()
     this._cass   = cass
     this._secret = cass.loadSecret('canvas_oauth')
     this._config = cass.loadConfig('canvas')
+    this.verbose = verbose
   }
 
   async* getUsers(params) {
@@ -45,25 +46,33 @@ class CanvasApi extends RestClient {
   }
 
   async createModule(name, opts = {}) {
+    this._log({createModule: name})
     const uri = modulesUri(await this._config)
     const module = {...opts, name}
     return this.POST(uri, {module})
   }
 
   async publishModule(id, published = true) {
+    this._log({publishModule: id})
     const uri = modulesUri(await this._config, id)
     const module = {published}
     return this.PUT(uri, {module})
   }
 
   async deleteModule(id) {
+    this._log({deleteModule: id})
     const uri = modulesUri(await this._config, id)
     return this.DELETE(uri)
   }
 
   async createModuleItem(id, module_item) {
+    this._log({createModuleItem: module_item})
     const uri = moduleItemsUri(await this._config, id)
     return this.POST(uri, {module_item})
+  }
+
+  _log(...args) {
+    if (this.verbose) console.log(...args)
   }
 }
 
