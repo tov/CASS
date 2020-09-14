@@ -1,0 +1,13 @@
+#!/usr/bin/env node
+
+const CanvasApi  = require('./cass/canvas-api')
+
+async function main() {
+  const canvas = new CanvasApi
+
+  for (const each of await canvas.getModules()) {
+    await canvas.deleteModule(each.id)
+  }
+}
+
+main().then(_ => 0, console.log)

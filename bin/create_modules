@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+
+const Cass         = require('./cass')
+const CanvasApi    = require('./cass/canvas-api')
+const {ModuleList} = require('./cass/canvas-modules')
+const fs           = require('fs/promises')
+
+async function main() {
+  const cass    = new Cass
+  const canvas  = new CanvasApi(cass)
+
+  const modules = await fs.readFile(cass.base('modules.json'), 'utf8')
+
+  for (const each of ModuleList.fromJSON(modules)) {
+    console.log(`Creating: ${each.name()}`)
+    const response = await each.create(canvas)
+    const created  = await response.json()
+    await canvas.publishModule(created.id)
+  }
+}
+
+main().then(_ => 0, console.log)
