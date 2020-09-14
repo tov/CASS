@@ -13,6 +13,9 @@ const usersUri = (C, {enrollment_type = 'student'} = {}) =>
 const modulesUri = (C, id) =>
   courseUri(C, buildUri('modules', id))
 
+const moduleItemsUri = (C, id) =>
+  courseUri(C, `modules/${id}/items`)
+
 class CanvasApi extends RestClient {
   constructor(cass = new (require('../cass'))) {
     super()
@@ -44,18 +47,23 @@ class CanvasApi extends RestClient {
   async createModule(name, opts = {}) {
     const uri = modulesUri(await this._config)
     const module = {...opts, name}
-    return this.fetch(uri, {method: 'POST', body: {module}})
+    return this.POST(uri, {module})
   }
 
   async publishModule(id, published = true) {
     const uri = modulesUri(await this._config, id)
     const module = {published}
-    return this.fetch(uri, {method: 'PUT', body: {module}})
+    return this.PUT(uri, {module})
   }
 
   async deleteModule(id) {
     const uri = modulesUri(await this._config, id)
-    return this.fetch(uri, {method: 'DELETE'})
+    return this.DELETE(uri)
+  }
+
+  async createModuleItem(id, module_item) {
+    const uri = moduleItemsUri(await this._config, id)
+    return this.POST(uri, {module_item})
   }
 }
 
