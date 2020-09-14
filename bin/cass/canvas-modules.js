@@ -1,5 +1,4 @@
 const {buildUri} = require('./rest-client')
-const fs = require('fs/promises')
 
 // TODO: extract this
 const panoptoEmbedBase =
@@ -34,7 +33,7 @@ const parseDueDate = contents => {
     value: contents
   }
 
-  return new Date(currentYear, match[1], match[2])
+  return new Date(currentYear, match[1] - 1, match[2])
 }
 
 class ModuleItem {
@@ -133,6 +132,8 @@ class Module extends Array {
     })
 
     const json = await response.json()
+
+    await canvas.publishModule(json.id)
 
     for (const item of this) {
       await item.create(json.id, canvas)
