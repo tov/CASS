@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const CanvasApi = require('./cass/canvas')
+const CanvasApi = require('./cass/canvas-api')
 
 async function main() {
   const canvas = new CanvasApi
