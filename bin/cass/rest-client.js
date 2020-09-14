@@ -53,6 +53,22 @@ class RestClient {
     }
   }
 
+  async GET(uri, opts = {}) {
+    return this.fetch(uri, {...opts, method: 'GET'})
+  }
+
+  async PUT(uri, body, opts = {}) {
+    return this.fetch(uri, {...opts, body, method: 'PUT'})
+  }
+
+  async POST(uri, body, opts = {}) {
+    return this.fetch(uri, {...opts, body, method: 'POST'})
+  }
+
+  async DELETE(uri, opts = {}) {
+    return this.fetch(uri, {...opts, method: 'DELETE'})
+  }
+
   static buildUri = buildUri
 }
 
