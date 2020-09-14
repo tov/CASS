@@ -4,7 +4,8 @@ const CanvasApi = require('./cass/canvas')
 
 async function main() {
   const canvas = new CanvasApi
-  for await (const each of canvas.getUsers()) {
+  const modules = await canvas.getModules()
+  for (const each of modules) {
     console.log(each)
   }
 }
