@@ -11,21 +11,25 @@ const buildUri = (base, path, query) => {
 
 class RestClient {
   async fetch(uri, opts = {}) {
-    const method  = opts.method || 'GET'
-    const headers = {
-      Authorization: `Bearer ${await this._secret}`
-    }
-
-    const response = await fetch(uri, {
-      method,
-      headers,
+    const realOpts = {
+      method: opts.method || 'GET',
+      headers: {
+        Authorization: `Bearer ${await this._secret}`
+      },
       redirect: 'follow',
       referrerPolicy: 'no-referrer',
-    })
+    }
 
-    if (!response.ok) {
-      const status = `${response.status} ${response.statusText}`
-      throw `Could not fetch <${uri}>;\n  reason: ${status}`
+    if (opts.body) {
+      realOpts.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+      realOpts.body = encode(opts.body)
+    }
+
+    const response = await fetch(uri, realOpts)
+    if (!response.ok) throw {
+      description: 'Could not fetch URI',
+      uri,
+      response,
     }
 
     return response
