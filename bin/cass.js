@@ -60,6 +60,8 @@ class Cass {
     const {path: start} = process.mainModule || {path: process.cwd()}
     this._root = findCourseRoot(start)
     this._base = firstExists(path.join(this._root, 'private'), this._root)
+
+    this.config = this.loadConfig('course')
   }
 
   root(...rest) {

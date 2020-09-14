@@ -10,6 +10,9 @@ const courseUri = (C, path, query) =>
 const usersUri = (C, {enrollment_type = 'student'} = {}) =>
   courseUri(C, 'users', {enrollment_type})
 
+const pagesUri = (C, path, query) =>
+  courseUri(C, buildUri('pages', path, query))
+
 const modulesUri = (C, id) =>
   courseUri(C, buildUri('modules', id))
 
@@ -73,6 +76,13 @@ class CanvasApi extends RestClient {
     this._log({createModuleItem: module_item})
     const uri = moduleItemsUri(this._config, id)
     return this.POST(uri, {module_item})
+  }
+
+  async putPage(wiki_page) {
+    this._log({createPage: wiki_page})
+    const page_uri = wiki_page.title.replace(/\W+/g, '-').toLowerCase()
+    const uri = pagesUri(this._config, page_uri)
+    return this.PUT(uri, {wiki_page})
   }
 
   _log(...args) {

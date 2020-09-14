@@ -1,4 +1,6 @@
-const PanoptoApi = require('./panopto-api')
+const PanoptoApi  = require('./panopto-api')
+const Exercises   = require('./exercises')
+const Page        = require('./canvas-page')
 
 const currentYear = new Date().getFullYear()
 
@@ -9,9 +11,6 @@ const formatDate = date =>
 
 const padDayNumber = num =>
   num.toString().padStart(2, '0')
-
-const titleToPageUrl = title =>
-  title.replace(/\W+/g, '-').toLowerCase()
 
 const parseDueDate = contents => {
   const match = contents.match(/^(\d\d?)\/(\d\d?)$/)
@@ -27,10 +26,17 @@ const latin = index => {
   return 'abcdefghijklmnopqrstuvwxyz'[index - 1]
 }
 
+const buildTitle = (title, items) =>
+  title
+    ? title
+    : items.map(item => item.title).join('; ')
+
 class ModuleContext {
   constructor(cass, pos = [1]) {
-    this.cass = cass
-    this.pos  = pos
+    this.cass      = cass
+    this.pos       = pos
+    this.exercises = new Exercises(cass)
+    this.panopto   = new PanoptoApi(cass)
   }
 
   depth() {
@@ -48,6 +54,8 @@ class ModuleContext {
   }
 
   slug(tag = '', start = 0) {
+    if (tag === true) tag = this.cass.config.tag
+
     const pos = this.pos
     const len = pos.length
 
@@ -66,7 +74,7 @@ class ModuleContext {
           l2 = `${l2}.${pos[i]}`
         }
       }
-      return `${l0}${l1}${l2}`
+      return `${tag}${l0}${l1}${l2}`
     }
   }
 }
@@ -79,17 +87,27 @@ class ModuleItem {
   }
 
   async create(module_id, canvas) {
-    return this.postBody(body => canvas.createModuleItem(module_id, body))
+    return this.postBody(
+      body => canvas.createModuleItem(module_id, body),
+      canvas)
   }
 
-  async postBody(post) {
-    const title = `(${this.cxt.slug('', 1)}) ${this.title}`
+  async postBody(post, canvas) {
+    const slug  = this.cxt.slug('', 1)
+    const kind  = this.kind ? `${this.kind}: ` : ``
+    const title = `(${slug}) ${kind}${this.title}`
     await post({
       title,
       type:   this.type,
       indent: this.cxt.depth(),
       ...this.body,
     })
+
+    const exercise = this.cxt.exercises.find(this.slug)
+    if (!exercise) return
+
+    const item = new ExerciseItem(this.title, exercise.filename, this.cxt)
+    await item.postBody(post, canvas)
   }
 
   static build(opts, cxt) {
@@ -99,7 +117,8 @@ class ModuleItem {
 
 class SubSection extends ModuleItem {
   constructor({title, items: raw_items}, cxt) {
-    const items = []
+    const items  = []
+
     let sub_cxt = cxt.indent()
 
     for (const each of raw_items) {
@@ -107,30 +126,45 @@ class SubSection extends ModuleItem {
       sub_cxt = sub_cxt.next()
     }
 
-    super(title, cxt)
+    super(buildTitle(title, items), cxt)
     this.cxt   = cxt
     this.items = items
   }
 
   type = 'SubHeader'
 
-  async postBody(post) {
-    await super.postBody(post)
+  async postBody(post, canvas) {
+    await super.postBody(post, canvas)
 
     const cxt = this.cxt.indent()
     for (const item of this.items) {
-      await item.postBody(post)
+      await item.postBody(post, canvas)
     }
   }
 }
 
 class PageItem extends ModuleItem {
   constructor({title, page_url}, cxt) {
-    page_url = page_url || titleToPageUrl(title)
+    page_url = page_url || Page.titleToUrl(title)
     super(title, cxt, {page_url})
   }
 
   type = 'Page'
+}
+
+class ExerciseItem extends PageItem {
+  constructor(title, filename, cxt) {
+    const page     = new Page(title, filename)
+    const page_url = page.page_url
+    super({title, page_url}, cxt)
+    this.page = page
+    this.kind = 'Exercise'
+  }
+
+  async postBody(post, canvas) {
+    await this.page.create(canvas)
+    return super.postBody(post, canvas)
+  }
 }
 
 class ExternalItem extends ModuleItem {
@@ -142,15 +176,14 @@ class ExternalItem extends ModuleItem {
 }
 
 class PanoptoItem extends ExternalItem {
-  constructor({title, id}, cxt) {
-    super({title}, cxt)
-    this.api = new PanoptoApi(cxt.cass)
-    this.id  = id
-  }
-
-  async postBody(post) {
-    this.body = {external_url: this.api.embedUrl(this.id)}
-    await super.postBody(post)
+  constructor({slug}, cxt) {
+    slug = slug || cxt.slug(true)
+    const session = cxt.panopto.findSession(slug)
+    const title   = session.title
+    const url     = session.embed()
+    super({title, url}, cxt)
+    this.kind = 'Video'
+    this.slug = slug
   }
 }
 
@@ -172,8 +205,10 @@ class Module extends Array {
 
   name() {
     const paddedDay = padDayNumber(this.dayNumber)
+    const title     = buildTitle(this.title, this)
     const dueDate   = formatDate(this.dueDate)
-    return `Day ${paddedDay}: ${this.title} (${dueDate})`
+
+    return `Day ${paddedDay}: ${title} (${dueDate})`
   }
 
   async create(canvas) {
