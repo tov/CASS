@@ -1,4 +1,4 @@
-const debug      = require('debug')('canvas-api')
+const debug      = require('debug')('canvas')
 
 const RestClient = require('./rest-client')
 const {buildUri} = RestClient
@@ -52,34 +52,36 @@ class CanvasApi extends RestClient {
     return result
   }
 
-  async createModule(name, opts = {}) {
-    debug({createModule: name})
+  async createModule(name, opts = {}, info) {
+    debug('createModule(%o)', {name, ...opts, ...info})
     const uri = modulesUri(this._config)
     const module = {...opts, name}
     return this.POST(uri, {module})
   }
 
-  async publishModule(id, published = true) {
-    debug({publishModule: id})
+  async publishModule(id, published = true, info) {
+    debug('publishModule(%o)', {id, published, ...info})
     const uri = modulesUri(this._config, id)
     const module = {published}
     return this.PUT(uri, {module})
   }
 
-  async deleteModule(id) {
-    debug({deleteModule: id})
+  async deleteModule(id, info) {
+    debug('deleteModule(%o)', {id, ...info})
     const uri = modulesUri(this._config, id)
     return this.DELETE(uri)
   }
 
-  async createModuleItem(id, module_item) {
-    debug({createModuleItem: module_item})
+  async createModuleItem(id, module_item, info) {
+    debug('createModuleItem(%o)', {id, ...module_item, ...info})
     const uri = moduleItemsUri(this._config, id)
     return this.POST(uri, {module_item})
   }
 
-  async putPage(wiki_page) {
-    debug({createPage: wiki_page})
+  async putPage(wiki_page, info) {
+    const {body, ...rest} = wiki_page
+    debug('createPage(%o)', {...rest, ...info})
+
     const page_uri = wiki_page.title.replace(/\W+/g, '-').toLowerCase()
     const uri = pagesUri(this._config, page_uri)
     return this.PUT(uri, {wiki_page})

@@ -1,23 +1,24 @@
 #!/usr/bin/env node
 
-const Cass          = require('./cass')
-const {MatchAnyArg} = require('./cass/util/matchers')
-const {ModuleList}  = require('./cass/canvas-modules')
+const {argv}        = require('process')
 const fs            = require('fs/promises')
 
-const matcher       = new MatchAnyArg
-
-const maybeCreate = canvas => async module => {
-  if (matcher.test(module.name()))
-    await module.create()
-}
+const Cass          = require('./cass')
+const {ModuleList}  = require('./cass/canvas-modules')
+const {getArgs}     = require('./cass/util/args')
+const {MatchAny}    = require('./cass/util/matchers')
+const {par_foreach} = require('./cass/util/async')
 
 async function main() {
+  const patterns = getArgs({min: 1, usage: 'PATTERN...+'})
+  const matcher  = new MatchAny(patterns)
   const cass     = new Cass
   const canvas   = cass.canvas()
-  const modules  = await fs.readFile(cass.base('modules.json'), 'utf8')
-  const promises = ModuleList.fromJSON(cass, modules).map(maybeCreate(canvas))
-  await Promise.all(promises)
+  const json     = await fs.readFile(cass.base('modules.json'), 'utf8')
+  const modules  = ModuleList.fromJSON(cass, json)
+
+  return par_foreach(modules, mod =>
+    matcher.test(mod.name()) && mod.create())
 }
 
 main().then(_ => 0, console.log)

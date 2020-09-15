@@ -1,4 +1,4 @@
-const debug     = require('debug')('canvas-modules')
+const debug     = require('debug')('canvas:modules')
 
 const Page      = require('./canvas-page')
 const fmt       = require('./util/fmt')
@@ -11,11 +11,18 @@ const attachAdvice = (actionTable, slug, ...items) => {
   adviceList.push(...items)
 }
 
+const missingAdviceKey = () => {
+  throw {
+    description: 'Malformed advice',
+    reason:      'Missing action key (one of before, after, or skip)',
+  }
+}
+
 class ModulePlan {
   constructor(module) {
     this.module = module
 
-    let attach  = this.addBeforeAdvice('all')
+    let attach  = missingAdviceKey
 
     for (const {before, after, skip, ...opts} of module.advice) {
       if (before)     attach = this.addBeforeAdvice(before)
@@ -175,12 +182,41 @@ class PanoptoItem extends ExternalItem {
   }
 }
 
+
 const HTDP_BASE = 'https://htdp.org/2020-8-1/Book/'
 
+const buildHtdpUri = opts => {
+  const {path, part, i, sec, ch} = opts
+
+  let uri = HTDP_BASE
+
+  if (path) {
+    return `${HTDP_BASE}${path}`
+  }
+
+  if (part) {
+    const fragment = sec && `#%28part._sec~3a${sec}%29`
+                  || ch && `#%28part._ch~3a${ch}%29`
+                  || ''
+    return `${HTDP_BASE}part_${part}${fragment}`
+  }
+
+  if (i) {
+    const fragment = sec && `#%28part._.${sec}%29`
+                  || ''
+    return `${HTDP_BASE}i${i}-${i + 1}.html${fragment}`
+  }
+
+  throw {
+    description: 'Bad options for HtdpItem',
+    reason: 'Need `path`, `part`, or `i`(ntermezzo)'
+  }
+}
+
 class HtdpItem extends ExternalItem {
-  constructor({path, section}, cass) {
-    const title = `Reading: HtDP ${section}`
-    const url   = `${HTDP_BASE}${path}`
+  constructor({title, name, path, part, tag}, cass) {
+    title = title || `Reading: HtDP ${name}`
+    const url = buildHtdpUri({path, part, tag})
     super({title, url}, cass)
   }
 }
@@ -213,12 +249,12 @@ class Module extends Array {
     const canvas   = this.cass.canvas()
     const response = await canvas.createModule(this.name(), {
       position:  this.day,
-      unlock_at: this.unlockDate.toString()
+      unlock_at: this.unlockDate.toISOString()
     })
 
     const json = await response.json()
-    await canvas.publishModule(json.id)
     await this.plan.execute(json.id)
+    await canvas.publishModule(json.id)
     return json
   }
 }
@@ -240,15 +276,17 @@ class ModuleList extends Array {
   }
 
   push(...array) {
-    let day = this.length + 1
+    let day      = this.length + 1
+    let prevDate = this.length > 0 && this[this.length - 1].dueDate
 
     for (const {date, unlock, title, advice = []} of array) {
       const dueDate    = parse.dueDate(date)
-      const unlockDate = unlock
-        ? parse.dueDate(unlock)
-        : this[this.length - 1] || dueDate
+      const unlockDate = unlock? parse.dueDate(unlock) : prevDate || dueDate
+
       super.push(new Module(day, title, unlockDate, dueDate, advice, this.cass))
+
       ++day
+      prevDate = dueDate
     }
   }
 }

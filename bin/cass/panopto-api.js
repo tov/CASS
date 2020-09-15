@@ -1,5 +1,5 @@
 const fs = require('fs')
-const debug = require('debug')('panopto-api')
+const debug = require('debug')('panopto')
 
 const {buildUri} = require('./rest-client')
 const parse      = require('./util/parse')
@@ -74,9 +74,13 @@ class PanoptoApi {
   }
 
   _storeSession(session) {
-    const {day, section, item} = parse.slug(session.slug)
-    this.bySlug[session.slug] = session
+    const slug                 = session.slug
+    const {day, section, item} = parse.slug(slug)
+
+    this.bySlug[slug] = session
     this.byDay.setdef(day).setdef(section)[item] = session
+
+    debug('Session %o', {slug, title: session.title})
   }
 
   _loadSessions() {
@@ -88,6 +92,7 @@ class PanoptoApi {
       const session = PanoptoSession.parse(line, this)
       if (session) this._storeSession(session)
     }
+
   }
 }
 

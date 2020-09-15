@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -eu
+
+bin=$(dirname "$0")
+
+echo>&2 Deleting...
+"$bin"/delete_modules "$@"
+
+echo>&2 Creating...
+"$bin"/create_modules "$@"
