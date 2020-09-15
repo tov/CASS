@@ -2,6 +2,21 @@ const fs         = require('fs')
 const path       = require('path')
 const process    = require('process')
 
+const Lazy       = require('./cass/util/lazy')
+const CanvasApi  = require('./cass/canvas-api')
+const Exercises  = require('./cass/exercises')
+const PanoptoApi = require('./cass/panopto-api')
+
+Object.prototype.getdef = function(i, d = []) {
+  return this[i] || d
+}
+
+Object.prototype.setdef = function(i, d = []) {
+  let v = this[i]
+  if (!v) v = this[i] = d
+  return v
+}
+
 const isCourseRoot = dir =>
   fs.existsSync(path.join(dir, '.root'))
 
@@ -62,6 +77,27 @@ class Cass {
     this._base = firstExists(path.join(this._root, 'private'), this._root)
 
     this.config = this.loadConfig('course')
+
+    this.register({
+      canvas:    CanvasApi,
+      exercises: Exercises,
+      panopto:   PanoptoApi,
+    })
+  }
+
+  register(obj) {
+    for (const name in obj) {
+      if (name in this) continue
+
+      const factory = obj[name]
+      const thunk   =
+        factory.prototype
+        ? () => new factory(this)
+        : factory
+      const lazy    = new Lazy(thunk)
+
+      this[name] = () => lazy.force()
+    }
   }
 
   root(...rest) {

@@ -1,3 +1,5 @@
+const debug      = require('debug')('canvas-api')
+
 const RestClient = require('./rest-client')
 const {buildUri} = RestClient
 
@@ -22,14 +24,12 @@ const moduleItemsUri = (C, id) =>
 class CanvasApi extends RestClient {
   constructor(cass = new (require('../cass')), {
     dry_run = false,
-    verbose = false,
   } = {}) {
     super({dry_run})
     this._cass   = cass
     this._secret = cass.loadSecret('canvas_oauth')
     this._config = cass.loadConfig('canvas')
     this.dry_run = dry_run
-    this.verbose = verbose
   }
 
   async* getUsers(params) {
@@ -53,40 +53,36 @@ class CanvasApi extends RestClient {
   }
 
   async createModule(name, opts = {}) {
-    this._log({createModule: name})
+    debug({createModule: name})
     const uri = modulesUri(this._config)
     const module = {...opts, name}
     return this.POST(uri, {module})
   }
 
   async publishModule(id, published = true) {
-    this._log({publishModule: id})
+    debug({publishModule: id})
     const uri = modulesUri(this._config, id)
     const module = {published}
     return this.PUT(uri, {module})
   }
 
   async deleteModule(id) {
-    this._log({deleteModule: id})
+    debug({deleteModule: id})
     const uri = modulesUri(this._config, id)
     return this.DELETE(uri)
   }
 
   async createModuleItem(id, module_item) {
-    this._log({createModuleItem: module_item})
+    debug({createModuleItem: module_item})
     const uri = moduleItemsUri(this._config, id)
     return this.POST(uri, {module_item})
   }
 
   async putPage(wiki_page) {
-    this._log({createPage: wiki_page})
+    debug({createPage: wiki_page})
     const page_uri = wiki_page.title.replace(/\W+/g, '-').toLowerCase()
     const uri = pagesUri(this._config, page_uri)
     return this.PUT(uri, {wiki_page})
-  }
-
-  _log(...args) {
-    if (this.verbose) console.log(...args)
   }
 }
 

@@ -17,11 +17,12 @@ const pandocToHtml = srcfile => new Promise((resolve, reject) => {
 })
 
 class Page {
-  constructor(title, srcfile) {
-    this.title   = title
-    this.url     = titleToPageUrl(title)
-    this.srcfile = srcfile
-    this.html    = false
+  constructor(title, srcfile, cass) {
+    this.title    = title
+    this.page_url = titleToPageUrl(title)
+    this.srcfile  = srcfile
+    this.cass     = cass
+    this.html     = false
   }
 
   static titleToUrl = titleToPageUrl
@@ -31,8 +32,8 @@ class Page {
     return this.html
   }
 
-  async create(canvas) {
-    return canvas.putPage({
+  async create() {
+    return this.cass.canvas().putPage({
       title: this.title,
       body:  await this.getHtml(),
     })

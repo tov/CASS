@@ -1,11 +1,19 @@
 #!/usr/bin/env node
 
-const CanvasApi  = require('./cass/canvas-api')
+const Cass          = require('./cass')
+const {MatchAnyArg} = require('./cass/util/matchers')
+
+const matcher       = new MatchAnyArg
+
+const maybeDelete = canvas => async module => {
+  if (matcher.test(module.name))
+    await canvas.deleteModule(module.id)
+}
 
 async function main() {
-  const canvas   = new CanvasApi(undefined, {verbose: true})
+  const canvas   = new Cass().canvas()
   const modules  = await canvas.getModules()
-  const promises = modules.map(each => canvas.deleteModule(each.id))
+  const promises = modules.map(maybeDelete(canvas))
   await Promise.all(promises)
 }
 

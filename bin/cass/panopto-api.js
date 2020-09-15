@@ -1,6 +1,8 @@
 const fs = require('fs')
+const debug = require('debug')('panopto-api')
 
 const {buildUri} = require('./rest-client')
+const parse      = require('./util/parse')
 
 class PanoptoSession {
   constructor(id, slug, title, api) {
@@ -34,7 +36,8 @@ class PanoptoApi {
     this._loadSessions()
   }
 
-  _sessions = {}
+  bySlug  = {}
+  byDay   = []
 
   static Session = PanoptoSession
 
@@ -56,14 +59,24 @@ class PanoptoApi {
     })
   }
 
-  findSession(slug) {
-    const attempt = this._sessions[slug]
-    if (!attempt) throw {
+  findBySlug(slug, required = false) {
+    const attempt = this.bySlug[slug]
+    if (required && !attempt) throw {
       description: 'Requested Panopto session not found',
-      session_slug: slug,
+      slug
     }
 
     return attempt
+  }
+
+  findByParts(day, section, item) {
+    return this.byDay.getdef(day).getdef(section)[item]
+  }
+
+  _storeSession(session) {
+    const {day, section, item} = parse.slug(session.slug)
+    this.bySlug[session.slug] = session
+    this.byDay.setdef(day).setdef(section)[item] = session
   }
 
   _loadSessions() {
@@ -73,7 +86,7 @@ class PanoptoApi {
 
     for (const line of content.split(/\n/)) {
       const session = PanoptoSession.parse(line, this)
-      if (session) sessions[session.slug] = session
+      if (session) this._storeSession(session)
     }
   }
 }

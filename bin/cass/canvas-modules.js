@@ -1,263 +1,254 @@
-const PanoptoApi  = require('./panopto-api')
-const Exercises   = require('./exercises')
-const Page        = require('./canvas-page')
+const debug     = require('debug')('canvas-modules')
 
-const currentYear = new Date().getFullYear()
+const Page      = require('./canvas-page')
+const fmt       = require('./util/fmt')
+const parse     = require('./util/parse')
 
-const formatDateOpts = {weekday: 'short', month: 'short', day: 'numeric'}
 
-const formatDate = date =>
-  date.toLocaleString('en-US', formatDateOpts)
-
-const padDayNumber = num =>
-  num.toString().padStart(2, '0')
-
-const parseDueDate = contents => {
-  const match = contents.match(/^(\d\d?)\/(\d\d?)$/)
-  if (!match) throw {
-    description: 'Could not parse module due date',
-    value: contents
-  }
-
-  return new Date(currentYear, match[1] - 1, match[2])
+const attachAdvice = (actionTable, slug, ...items) => {
+  let adviceList = actionTable[slug]
+  if (!adviceList) adviceList = actionTable[slug] = []
+  adviceList.push(...items)
 }
 
-const latin = index => {
-  return 'abcdefghijklmnopqrstuvwxyz'[index - 1]
-}
+class ModulePlan {
+  constructor(module) {
+    this.module = module
 
-const buildTitle = (title, items) =>
-  title
-    ? title
-    : items.map(item => item.title).join('; ')
+    let attach  = this.addBeforeAdvice('all')
 
-class ModuleContext {
-  constructor(cass, pos = [1]) {
-    this.cass      = cass
-    this.pos       = pos
-    this.exercises = new Exercises(cass)
-    this.panopto   = new PanoptoApi(cass)
+    for (const {before, after, skip, ...opts} of module.advice) {
+      if (before)     attach = this.addBeforeAdvice(before)
+      else if (after) attach = this.addAfterAdvice(after)
+      else if (skip)  attach = this.addSkipAdvice(skip)
+
+      attach(() => ModuleItem.build(opts, this.module.cass))
+    }
   }
 
-  depth() {
-    return this.pos.length - 1
+  _before_advice = {}
+  _after_advice = {}
+  _skip_advice = {}
+
+  addBeforeAdvice(slug) {
+    return mk => attachAdvice(this._before_advice, slug, mk())
   }
 
-  next() {
-    const copy = new ModuleContext(this.cass, [...this.pos])
-    ++copy.pos[copy.depth()]
-    return copy
+  addAfterAdvice(slug) {
+    return mk => attachAdvice(this._after_advice, slug, mk())
   }
 
-  indent() {
-    return new ModuleContext(this.cass, [...this.pos, 1])
+  addSkipAdvice(slug) {
+    return _ => this._skip_advice[slug] = true
   }
 
-  slug(tag = '', start = 0) {
-    if (tag === true) tag = this.cass.config.tag
+  async execute(module_id) {
+    const {cass, day} = this.module
+    const panopto   = cass.panopto()
+    const exercises = cass.exercises()
 
-    const pos = this.pos
-    const len = pos.length
+    const module = panopto.byDay[day]
+    if (!module) return
 
-    let l0 = '', l1 = '', l2 = ''
+    for (let i = 0; i < module.length; ++i) {
+      const section = module[i]
+      if (!section) continue
 
-    switch (start) {
-    case 0:
-      if (0 < len) l0 = padDayNumber(pos[0])
-    case 1:
-      if (1 < len) l1 = latin(pos[1])
-    case 2:
-      if (2 < len) l2 = `-${pos[2]}`
-    default:
-      for (let i = 3; i < len; ++i) {
-        if (start <= i) {
-          l2 = `${l2}.${pos[i]}`
+      const items  = []
+
+      for (let j = 0; j < section.length; ++j) {
+        const session = section[j]
+        if (!session) continue
+
+        const {slug, title} = session
+        if (this._skip_advice[slug]) continue
+
+        const before = this._before_advice[slug]
+        if (before) items.push(...before)
+
+        items.push(new PanoptoItem({session, slug}, cass))
+
+        const exercise = exercises.find(slug)
+        if (exercise) {
+          items.push(new ExerciseItem(title, slug, exercise.filename, cass))
         }
+
+        const after = this._after_advice[slug]
+        if (after) items.push(...after)
       }
-      return `${tag}${l0}${l1}${l2}`
+
+      const title = `Part (${fmt.section(i)})`
+      await new SubHeaderItem({title}, cass).create(module_id)
+
+      for (const item of items) {
+        await item.create(module_id)
+      }
     }
   }
 }
 
+
 class ModuleItem {
-  constructor(title, cxt, body = {}) {
+  constructor(title, cass, body = {}) {
     this.title = title
-    this.cxt   = cxt
+    this.cass  = cass
     this.body  = body
   }
 
-  async create(module_id, canvas) {
-    return this.postBody(
-      body => canvas.createModuleItem(module_id, body),
-      canvas)
+  static build(opts, cass) {
+    return new (this.Types[opts.type])(opts, cass)
   }
 
-  async postBody(post, canvas) {
-    const slug  = this.cxt.slug('', 1)
-    const kind  = this.kind ? `${this.kind}: ` : ``
-    const title = `(${slug}) ${kind}${this.title}`
-    await post({
+  indent = 1
+
+  async create(module_id) {
+    const canvas = this.cass.canvas()
+    const body = await this.buildBody()
+    return canvas.createModuleItem(module_id, body)
+  }
+
+  async buildBody() {
+    const kind  = fmt.maybeFormat(this.kind, s => `${s}: `)
+    const slug  = fmt.maybeFormat(this.slug, s => ` (${s})`)
+    const title = `${kind}${this.title}${slug}`
+
+    return {
       title,
       type:   this.type,
-      indent: this.cxt.depth(),
+      indent: this.indent,
       ...this.body,
-    })
-
-    const exercise = this.cxt.exercises.find(this.slug)
-    if (!exercise) return
-
-    const item = new ExerciseItem(this.title, exercise.filename, this.cxt)
-    await item.postBody(post, canvas)
-  }
-
-  static build(opts, cxt) {
-    return new (this.Types[opts.type])(opts, cxt)
-  }
-}
-
-class SubSection extends ModuleItem {
-  constructor({title, items: raw_items}, cxt) {
-    const items  = []
-
-    let sub_cxt = cxt.indent()
-
-    for (const each of raw_items) {
-      items.push(ModuleItem.build(each, sub_cxt))
-      sub_cxt = sub_cxt.next()
-    }
-
-    super(buildTitle(title, items), cxt)
-    this.cxt   = cxt
-    this.items = items
-  }
-
-  type = 'SubHeader'
-
-  async postBody(post, canvas) {
-    await super.postBody(post, canvas)
-
-    const cxt = this.cxt.indent()
-    for (const item of this.items) {
-      await item.postBody(post, canvas)
     }
   }
 }
+
+
+class SubHeaderItem extends ModuleItem {
+  constructor({title}, cass) {
+    super(title, cass)
+  }
+
+  indent = 0
+  type   = 'SubHeader'
+}
+
 
 class PageItem extends ModuleItem {
-  constructor({title, page_url}, cxt) {
+  constructor({title, page_url}, cass) {
     page_url = page_url || Page.titleToUrl(title)
-    super(title, cxt, {page_url})
+    super(title, cass, {page_url})
   }
 
   type = 'Page'
 }
 
 class ExerciseItem extends PageItem {
-  constructor(title, filename, cxt) {
-    const page     = new Page(title, filename)
-    const page_url = page.page_url
-    super({title, page_url}, cxt)
+  constructor(title, slug, filename, cass) {
+    const page = new Page(title, filename, cass)
+    super(page, cass)
     this.page = page
     this.kind = 'Exercise'
+    this.slug = slug
   }
 
-  async postBody(post, canvas) {
-    await this.page.create(canvas)
-    return super.postBody(post, canvas)
+  async buildBody() {
+    await this.page.create()
+    return super.buildBody()
   }
 }
 
 class ExternalItem extends ModuleItem {
-  constructor({title, url}, cxt) {
-    super(title, cxt, {external_url: url})
+  constructor({title, url}, cass) {
+    super(title, cass, {external_url: url})
   }
 
   type = 'ExternalUrl'
 }
 
 class PanoptoItem extends ExternalItem {
-  constructor({slug}, cxt) {
-    slug = slug || cxt.slug(true)
-    const session = cxt.panopto.findSession(slug)
-    const title   = session.title
-    const url     = session.embed()
-    super({title, url}, cxt)
+  constructor({session, slug}, cass) {
+    session = session || cass.panopto.findBySlug(slug, true)
+    const title = session.title
+    const url   = session.embed()
+    super({title, url}, cass)
     this.kind = 'Video'
-    this.slug = slug
+    this.slug = slug || session.slug
+  }
+}
+
+const HTDP_BASE = 'https://htdp.org/2020-8-1/Book/'
+
+class HtdpItem extends ExternalItem {
+  constructor({path, section}, cass) {
+    const title = `Reading: HtDP ${section}`
+    const url   = `${HTDP_BASE}${path}`
+    super({title, url}, cass)
   }
 }
 
 ModuleItem.Types = {
-  sub:      SubSection,
   page:     PageItem,
   external: ExternalItem,
   video:    PanoptoItem,
+  htdp:     HtdpItem,
+  head:     SubHeaderItem,
 }
 
 class Module extends Array {
-  constructor(dayNumber, title, unlockDate, dueDate) {
+  constructor(day, title, unlockDate, dueDate, advice, cass) {
     super()
-    this.dayNumber  = dayNumber
+    this.day        = day
     this.title      = title
     this.unlockDate = unlockDate
     this.dueDate    = dueDate
+    this.advice     = advice
+    this.cass       = cass
+    this.plan       = new ModulePlan(this)
   }
 
   name() {
-    const paddedDay = padDayNumber(this.dayNumber)
-    const title     = buildTitle(this.title, this)
-    const dueDate   = formatDate(this.dueDate)
-
-    return `Day ${paddedDay}: ${title} (${dueDate})`
+    return fmt.moduleHead(this.day, this.dueDate, this.title)
   }
 
-  async create(canvas) {
+  async create() {
+    const canvas   = this.cass.canvas()
     const response = await canvas.createModule(this.name(), {
-      position:  this.dayNumber,
+      position:  this.day,
       unlock_at: this.unlockDate.toString()
     })
 
     const json = await response.json()
-
     await canvas.publishModule(json.id)
-
-    for (const item of this) {
-      await item.create(json.id, canvas)
-    }
-
+    await this.plan.execute(json.id)
     return json
   }
 }
 
 class ModuleList extends Array {
+  constructor(cass) {
+    super()
+    this.cass = cass
+  }
+
   static fromJSON(cass, json) {
     return this.fromArray(cass, JSON.parse(json))
   }
 
   static fromArray(cass, array) {
-    const result = new this
-    result.push(cass, ...array)
+    const result = new this(cass)
+    result.push(...array)
     return result
   }
 
-  push(cass, ...array) {
-    let unlockDate = this.length > 0
-      ? this[this.length - 1].dueDate
-      : undefined
+  push(...array) {
+    let day = this.length + 1
 
-    for (const {due_date, title, items = []} of array) {
-      const dayNum  = this.length + 1
-      const dueDate = parseDueDate(due_date)
-      const module  = new Module(dayNum, title, unlockDate || dueDate, dueDate)
-      super.push(module)
-
-      let cxt = new ModuleContext(cass, [dayNum, 1])
-      for (const item of items) {
-        module.push(ModuleItem.build(item, cxt))
-        cxt = cxt.next()
-      }
-
-      unlockDate = dueDate
+    for (const {date, unlock, title, advice = []} of array) {
+      const dueDate    = parse.dueDate(date)
+      const unlockDate = unlock
+        ? parse.dueDate(unlock)
+        : this[this.length - 1] || dueDate
+      super.push(new Module(day, title, unlockDate, dueDate, advice, this.cass))
+      ++day
     }
   }
 }
