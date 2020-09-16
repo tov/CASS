@@ -13,13 +13,6 @@ const section = index => {
   return alphabet[index - 1]
 }
 
-const joinTitle = items =>
-  items.map(item => item.title).join('; ')
-
-const buildTitle = (title, items) =>
-  title
-    ? title
-    : joinTitle(items)
 
 const maybeFormat = (x, k) => x ? k(x) : ''
 
@@ -36,9 +29,7 @@ const slug = (tag, dayNum, secNum, itemNum) => {
 
 module.exports = {
   alphabet,
-  buildTitle,
   day,
-  joinTitle,
   maybeFormat,
   moduleHead,
   section,
