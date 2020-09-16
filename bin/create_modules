@@ -7,7 +7,7 @@ const Cass          = require('./cass')
 const {ModuleList}  = require('./cass/canvas-modules')
 const {getArgs}     = require('./cass/util/args')
 const {MatchAny}    = require('./cass/util/matchers')
-const {par_foreach} = require('./cass/util/async')
+const {seq_foreach} = require('./cass/util/async')
 
 async function main() {
   const patterns = getArgs({min: 1, usage: 'PATTERN...+'})
@@ -17,7 +17,7 @@ async function main() {
   const json     = await fs.readFile(cass.base('modules.json'), 'utf8')
   const modules  = ModuleList.fromJSON(cass, json)
 
-  return par_foreach(modules, mod =>
+  return seq_foreach(modules, mod =>
     matcher.test(mod.name()) && mod.create())
 }
 
