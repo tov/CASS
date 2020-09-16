@@ -8,13 +8,17 @@
 # Options:
 #
 #  -c   create the remote repo first
+#  -n   dry run (don't actually do anything)
 #
 
 . "$(dirname "$0")/.CASS"
 course_use hw
 course_use ghapi
+course_use dry_run
 
-eval "$(getargs -c hw)"
+eval "$(getargs -cn hw)"
+
+dry_run_if [ -n "$flag_n" ]
 
 local_dir=$(find_local_repo $hw)
 cd "$local_dir"
@@ -23,12 +27,12 @@ remote_name=$(remote_starter_repo_name $hw)
 remote_url=$(remote_starter_repo_url $hw)
 
 if [ -n "$flag_c" ]; then
-    ghapi_create_repo $remote_name "
+    _N ghapi_create_repo $remote_name "
         description: \"Homework $hw\",
         private: true,
         is_template: true,
     "
 fi
 
-starter=$(git commit-tree 'master^{tree}' -m "Starter code for hw$hw.")
-git push $remote_url +$starter:refs/heads/master
+starter=$(_N git commit-tree 'master^{tree}' -m "Starter code for hw$hw")
+_N git push $remote_url +$starter:refs/heads/master
