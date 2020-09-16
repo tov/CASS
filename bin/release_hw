@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# Script for releasing starter branch of hwN-dev repo as master branch
-# of hwN-starter repo.
+# Script for releasing starter branch of _prjN-dev repo as master branch
+# of _prjN-starter repo.
 #
 # Example: release_hw 3
 #
@@ -28,11 +28,12 @@ remote_url=$(remote_starter_repo_url $hw)
 
 if [ -n "$flag_c" ]; then
     _N ghapi_create_repo $remote_name "
-        description: \"Homework $hw\",
+        description: \"${assignment_called} $hw\",
         private: true,
         is_template: true,
     "
 fi
 
-starter=$(_N git commit-tree 'master^{tree}' -m "Starter code for hw$hw")
+message=$(printf "Starter code for ${assignment_slug_fmt}." $hw)
+starter=$(_N git commit-tree 'master^{tree}' -m "$message")
 _N git push $remote_url +$starter:refs/heads/master
