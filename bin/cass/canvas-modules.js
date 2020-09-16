@@ -247,8 +247,9 @@ class Module extends Array {
   async create() {
     const canvas   = this.cass.canvas()
     const response = await canvas.createModule(this.name(), {
-      position:  this.day,
-      unlock_at: this.unlockDate.toISOString()
+      position: this.day,
+      unlock_at: this.unlockDate.toISOString(),
+      require_sequential_progress: true,
     })
 
     const json = await response.json()
