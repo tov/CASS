@@ -21,9 +21,11 @@ class Exercises {
   }
 
   _contents = {}
+  _default  = 'default'
 
-  find(slug) {
-    return this._contents[slug]
+  find(slug, use_default = true) {
+    return this._contents[slug] ||
+      (use_default && this._contents[this._default])
   }
 }
 
