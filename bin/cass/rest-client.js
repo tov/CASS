@@ -1,6 +1,7 @@
 const fetch       = require('node-fetch')
 const fs          = require('fs/promises')
 const encode      = require('form-urlencoded').default
+const parseLink   = require('parse-link-header')
 
 const buildUri = (base, path, query) => {
   let result = base
@@ -50,10 +51,13 @@ class RestClient {
     const link = response.headers.get('Link')
     if (!link) return
 
-    const matches = link.match(/<([^>]*)>; *rel="next"/)
-    if (!matches) return
+    const parsed = parseLink(link)
+    if (!parsed) return
 
-    return this.fetch(matches[1], opts)
+    const next = parsed.next
+    if (!next) return
+
+    return this.fetch(next.url, opts)
   }
 
   async* fetchAll(uri, opts = {}) {
