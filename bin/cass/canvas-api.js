@@ -33,6 +33,18 @@ class CanvasApi extends RestClient {
     this.dry_run = dry_run
   }
 
+  getCourseId() {
+    return this._config.course_id
+  }
+
+  getHost() {
+    return this._config.host
+  }
+
+  getCourseWebBase () {
+    return `https://${this.getHost()}/courses/${this.getCourseId()}`
+  }
+
   async* getUsers(params) {
     const uri = usersUri(this._config, params)
     for await (const response of this.fetchAll(uri)) {
