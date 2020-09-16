@@ -1,8 +1,9 @@
+const debug = require('debug')('exercises')
 const fs   = require('fs')
 const path = require('path')
 
 const loadExercises = (table, current) => {
-  const match = current.match(/\/([a-z]+\d+(?:[a-z]+(?:-\d+)?)?)\.md$/)
+  const match = current.match(/\/([a-zA-Z0-9_-]+)\.md$/)
   if (match) {
     const slug = match[1]
     table[slug] = {slug, filename: current}
