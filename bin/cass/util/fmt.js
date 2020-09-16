@@ -13,6 +13,8 @@ const section = index => {
   return alphabet[index - 1]
 }
 
+const joinWith = (sep, ...items) =>
+  items.filter(x => x).join(sep)
 
 const maybeFormat = (x, k) => x ? k(x) : ''
 
@@ -30,6 +32,7 @@ const slug = (tag, dayNum, secNum, itemNum) => {
 module.exports = {
   alphabet,
   day,
+  joinWith,
   maybeFormat,
   moduleHead,
   section,

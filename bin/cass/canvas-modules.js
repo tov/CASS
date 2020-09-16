@@ -115,9 +115,8 @@ class ModuleItem {
   }
 
   async buildBody() {
-    const kind  = fmt.maybeFormat(this.kind, s => `${s}: `)
     const slug  = fmt.maybeFormat(this.slug, s => ` (${s})`)
-    const title = `${kind}${this.title}${slug}`
+    const title = `${this.title}${slug}`
 
     return {
       title,
@@ -150,10 +149,11 @@ class PageItem extends ModuleItem {
 
 class ExerciseItem extends PageItem {
   constructor(title, slug, filename, cass) {
-    const page = new Page(title, filename, cass)
+    const pageTitle = fmt.joinWith(': ', 'Exercise', title)
+    const page      = new Page(pageTitle, filename, cass)
+
     super(page, cass)
     this.page = page
-    this.kind = 'Exercise'
     this.slug = slug
   }
 
@@ -174,10 +174,9 @@ class ExternalItem extends ModuleItem {
 class PanoptoItem extends ExternalItem {
   constructor({session, slug}, cass) {
     session = session || cass.panopto.findBySlug(slug, true)
-    const title = session.title
+    const title = fmt.joinWith(': ', 'Video', session.title)
     const url   = session.embed()
     super({title, url}, cass)
-    this.kind = 'Video'
     this.slug = slug || session.slug
   }
 }
