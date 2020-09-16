@@ -1,3 +1,4 @@
+// formatting utilities
 
 const shortDateOpts = {weekday: 'short', month: 'short', day: 'numeric'}
 
@@ -7,6 +8,7 @@ const shortDate = date =>
 const day = num =>
   num.toString().padStart(2, '0')
 
+const digits   = '0123456789'
 const alphabet = 'abcdefghijklmnopqrstuvwxyz'
 
 const section = index => {
@@ -29,28 +31,14 @@ const slug = (tag, dayNum, secNum, itemNum) => {
   return `${tag}${day(dayNum)}${section(secNum)}-${itemNum}`
 }
 
-const wikifyTitle = title =>
-  title.replace(/[?'"]/g, '')
-       .replace(/&/g,   ' and ')
-       .replace(/@/g,   ' at ')
-       .replace(/[.]/g, ' dot ')
-       .replace(/#/g,   ' number ')
-       .replace(/%/g,   ' percent ')
-       .replace(/[/]/g, ' slash ')
-       .replace(/[^\w`=+$|><~]/g, '-')
-       .replace(/--+/g, '-')
-       .replace(/^-/g, '')
-       .replace(/-$/g, '')
-       .toLowerCase()
-
 module.exports = {
   alphabet,
   day,
+  digits,
   joinWith,
   maybeFormat,
   moduleHead,
   section,
   shortDate,
   slug,
-  wikifyTitle,
 }

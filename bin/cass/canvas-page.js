@@ -1,9 +1,9 @@
 const debug = require('debug')('canvas:page')
 const fs = require('fs')
 const util = require('util');
-const {execFile}  = require('child_process')
+const {execFile} = require('child_process')
 
-const {wikifyTitle} = require('./util/fmt')
+const slugify = require('./util/slugify')
 
 const pandocToHtml = srcfile => new Promise((resolve, reject) => {
   execFile('pandoc', [srcfile, '-t', 'html'], (error, stdout, stderr) => {
@@ -19,7 +19,7 @@ const pandocToHtml = srcfile => new Promise((resolve, reject) => {
 class Page {
   constructor(title, srcfile, cass) {
     this.title    = title
-    this.page_url = wikifyTitle(title)
+    this.page_url = slugify(title)
     this.srcfile  = srcfile
     this.cass     = cass
     this.html     = false

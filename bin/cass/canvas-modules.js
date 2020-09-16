@@ -1,4 +1,4 @@
-const debug     = require('debug')('canvas:modules')
+const fs        = require('fs/promises')
 
 const Page      = require('./canvas-page')
 const fmt       = require('./util/fmt')
@@ -228,25 +228,94 @@ ModuleItem.Types = {
   head:     SubHeaderItem,
 }
 
-class Module extends Array {
-  constructor(day, title, unlockDate, dueDate, advice, cass) {
-    super()
+class ModuleLike {
+  constructor(day, name, unlockDate, dueDate, cass) {
     this.day        = day
-    this.title      = title
-    this.unlockDate = unlockDate
-    this.dueDate    = dueDate
-    this.advice     = advice
+    this.name       = name
+    this.unlockDate = new Date(unlockDate)
+    this.dueDate    = new Date(dueDate)
     this.cass       = cass
-    this.plan       = new ModulePlan(this)
+    this.proxy      = undefined
   }
 
-  name() {
-    return fmt.moduleHead(this.day, this.dueDate, this.title)
+  setProxy(proxy) {
+    this.proxy = proxy
+  }
+
+  isUnlocked() {
+    const subject = this.proxy || this
+    return subject.unlockDate < new Date
+  }
+
+  isPastDue() {
+    return this.dueDate < new Date
+  }
+}
+
+class ProxyModule extends ModuleLike {
+  constructor(module, day, opts = {}, cass) {
+    const due = module && module.dueDate
+    const { id, items_count, name, position, published,
+            require_sequential_progress, unlock_at, } = opts
+
+    super(day, name, unlock_at, due, cass)
+    this.canvasId = id
+    this.length = items_count
+    this.position = position
+    this.sequential = require_sequential_progress
+
+    if (module) module.setProxy(this)
+  }
+
+  isPosted() {
+    return true
+  }
+
+  async uncreate(force = false) {
+    const {canvasId, name} = this
+
+    if (this.isUnlocked() && !force) {
+      console.warn(`Not deleting unlocked module: ${name}`)
+      return
+    }
+
+    await this.cass.canvas().deleteModule(canvasId, {name})
   }
 
   async create() {
+    console.warn(`Cannot re-create remote-only module: ${name}`)
+  }
+}
+
+class Module extends ModuleLike {
+  constructor(day, title, unlockDate, dueDate, advice, cass) {
+    const name = fmt.moduleHead(day, dueDate, title)
+    super(day, name, unlockDate, dueDate, cass)
+    this.advice = advice
+    this.plan = new ModulePlan(this)
+  }
+
+  isPosted() {
+    return this.proxy ? this.proxy.isPosted() : false
+  }
+
+  async create(force = false) {
+    if (this.isPosted()) {
+      if (force) {
+        await this.uncreate(force)
+      } else {
+        console.warn(`Not reposting already-posted module: ${this.name}`)
+        return
+      }
+    }
+
+    if (this.isUnlocked() && !force) {
+      console.warn(`Not reposting unlocked module: ${this.name}`)
+      return
+    }
+
     const canvas   = this.cass.canvas()
-    const response = await canvas.createModule(this.name(), {
+    const response = await canvas.createModule(this.name, {
       position: this.day,
       unlock_at: this.unlockDate.toISOString(),
       require_sequential_progress: true,
@@ -257,37 +326,86 @@ class Module extends Array {
     await canvas.publishModule(json.id)
     return json
   }
+
+  async uncreate(force = false) {
+    if (this.proxy)
+      await this.proxy.uncreate(force)
+    else
+      console.warn(`Not deleting unposted module: ${this.name}`)
+  }
 }
 
-class ModuleList extends Array {
+class ModuleList {
   constructor(cass) {
-    super()
-    this.cass = cass
+    this.cass     = cass
+    this._modules = []
   }
 
-  static fromJSON(cass, json) {
-    return this.fromArray(cass, JSON.parse(json))
+  getModules() {
+    return this._modules
   }
 
-  static fromArray(cass, array) {
-    const result = new this(cass)
-    result.push(...array)
-    return result
+  getModuleForDay(i) {
+    return this._modules[i - 1]
   }
 
-  push(...array) {
-    let day      = this.length + 1
-    let prevDate = this.length > 0 && this[this.length - 1].dueDate
+  setModuleForDay(i, module) {
+    this._modules[i - 1] = module
+  }
 
-    for (const {date, unlock, title, advice = []} of array) {
-      const dueDate    = parse.dueDate(date)
-      const unlockDate = unlock? parse.dueDate(unlock) : prevDate || dueDate
+  async load() {
+    const remoteData = this.fetchRemote()
+    const localData  = this.readLocal()
 
-      super.push(new Module(day, title, unlockDate, dueDate, advice, this.cass))
+    await this.loadLocal(await localData)
+    await this.loadRemote(await remoteData)
+
+    return this
+  }
+
+  async loadLocal(data) {
+    data = data || await this.readLocal()
+    const modules = this._modules
+
+    let day = 1
+    let prev = undefined
+
+    for (let {title, date, unlock, advice = []} of data) {
+      const due = parse.dueDate(date)
+      unlock = unlock ? parse.dueDate(unlock) : prev || due
+
+      this.setModuleForDay(day,
+        new Module(day, title, unlock, due, advice, this.cass))
 
       ++day
-      prevDate = dueDate
+      prev = due
     }
+
+    return this
+  }
+
+  async loadRemote(data) {
+    data = data || await this.fetchRemote()
+    const modules = this._modules
+
+    for (const each of data) {
+      const match  = each.name.match(/^Day (\d+):/) || []
+      const day    = parseInt(match[1]) || modules.length + 1
+      const module = this.getModuleForDay(day)
+      const proxy  = new ProxyModule(module, day, each, this.cass)
+      if (!module) this.setModuleForDay(day, proxy)
+    }
+
+    return this
+  }
+
+  async readLocal() {
+    const json = await fs.readFile(this.cass.base('modules.json'), 'utf8')
+    return JSON.parse(json)
+  }
+
+  async fetchRemote() {
+    return this.cass.canvas().getModules()
   }
 }
 

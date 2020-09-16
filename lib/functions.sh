@@ -462,16 +462,20 @@ ref_exists () {
     git rev-parse --verify "$1" >/dev/null 2>&1
 }
 
+_cass_error_putln () {
+    echo>&4 "$@" || echo>&2 "$@" || exit 255
+}
+
 cass_fatal () {
     local errcode; errcode=$1; shift
-    echo >&4 "$(short_prog_name): fatal error (#$errcode): $*"
+    _cass_error_putln "$(short_prog_name): fatal error (#$errcode): $*"
     exit $errcode
 }
 
 cass_error () {
     local errcode; errcode=$1; shift ||
         cass_fatal 101 'cass_error needs arguments'
-    echo >&4 "$(short_prog_name): error (#$errcode): $*"
+    _cass_error_putln "$(short_prog_name): error (#$errcode): $*"
     return $errcode
 }
 

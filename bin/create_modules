@@ -14,11 +14,11 @@ async function main() {
   const matcher  = new MatchAny(patterns, 'i')
   const cass     = new Cass
   const canvas   = cass.canvas()
-  const json     = await fs.readFile(cass.base('modules.json'), 'utf8')
-  const modules  = ModuleList.fromJSON(cass, json)
+  const modlist  = await new ModuleList(cass).load()
 
-  return seq_foreach(modules, mod =>
-    matcher.test(mod.name()) && mod.create())
+  for (const mod of modlist.getModules())
+    if (matcher.test(mod.name))
+      await mod.create()
 }
 
 main().then(_ => 0, console.log)
