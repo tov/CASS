@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# Caches our Panopto session metadata.
+#
+# Usage:
+#
+#   -q     quiet
+
+. "$(dirname "$0")/.CASS"
+eval "$(getargs -q)"
+
+if [ -n "$flag_q" ]; then
+    exec 1>/dev/null
+fi
+
+session_cache="${COURSE_VAR}/cache/panopto/sessions"
+
+"$COURSE_BIN"/list_panopto_sessions.py | tee "$session_cache"
