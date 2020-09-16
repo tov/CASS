@@ -213,9 +213,9 @@ const buildHtdpUri = opts => {
 }
 
 class HtdpItem extends ExternalItem {
-  constructor({title, name, path, part, tag}, cass) {
+  constructor({title, name, path, part, ch, i, sec}, cass) {
     title = title || `Reading: HtDP ${name}`
-    const url = buildHtdpUri({path, part, tag})
+    const url = buildHtdpUri({path, part, ch, i, sec})
     super({title, url}, cass)
   }
 }
