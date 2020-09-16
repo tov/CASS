@@ -7,7 +7,6 @@ const Cass          = require('./cass')
 const {ModuleList}  = require('./cass/canvas-modules')
 const {getArgs}     = require('./cass/util/args')
 const {MatchAny}    = require('./cass/util/matchers')
-const {seq_foreach} = require('./cass/util/async')
 
 async function main() {
   const patterns = getArgs({min: 1, usage: 'PATTERN...+'})
