@@ -1,0 +1,28 @@
+#!/usr/bin/env node
+
+const CanvasApi = require('./cass/canvas-api')
+
+const canvas = new CanvasApi
+const base = canvas.getCourseWebBase()
+
+const printHeader = () => {
+  console.log(`| Name | Email |`)
+  console.log(`| :--- | :---- |`)
+}
+
+const printUser = ({name, email, id}) => {
+  let matches = email.match(/^(.*@.*)[.]northwestern[.]edu$/)
+  const abbrevEmail = matches ? matches[1] : email
+  const nameMD      = `[${name}](${base}/users/${id})`
+  const emailMD     = `[${abbrevEmail}](mailto:${email})`
+  console.log(`| ${nameMD} | ${emailMD} |`)
+}
+
+async function main() {
+  printHeader()
+  for await (const user of canvas.getUsers({enrollment_type: 'ta'})) {
+    printUser(user)
+  }
+}
+
+main().then(_ => 0, console.log)
