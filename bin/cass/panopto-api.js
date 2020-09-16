@@ -5,7 +5,7 @@ const {buildUri} = require('./rest-client')
 const parse      = require('./util/parse')
 
 class PanoptoSession {
-  constructor(id, slug, title, api) {
+  constructor(id, slug, title = '', api) {
     this.id    = id
     this.slug  = slug
     this.title = title
@@ -19,9 +19,9 @@ class PanoptoSession {
   static parse(line, api) {
     if (/^\s*(?=#|$)/.test(line)) return
 
-    const match = line.match(/^(\S+)\s+(\S+)\s+\((.*?)\s*\)\s*$/)
+    const match = line.match(/^(\S+)\s+(\S+)(?:\s+\((.*?)\s*\)\s*)?$/)
     if (!match) throw {
-      description: 'Panopto session desciptor parse error',
+      description: 'Panopto session descriptor parse error',
       data: line
     }
 
