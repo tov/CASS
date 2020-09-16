@@ -5,24 +5,72 @@ const CanvasApi = require('./cass/canvas-api')
 const canvas = new CanvasApi
 const base = canvas.getCourseWebBase()
 
+const professor = {
+  name: 'Jesse Tov',
+  email: 'jesse@cs.northwestern.edu',
+  abbrevEmail: '`jesse@cs`',
+  url: 'https://users.cs.northwestern.edu/~jesse/'
+}
+
+const niceName = name => {
+  const [surname, given] = name.split(/, */)
+  const [given1] = given.split(/ +/)
+  const [surname1] = surname.split(/ +/)
+  return `${given1} ${surname1}`
+}
+
+const abbrevEmail = email => {
+  const matches = email.match(/^(.*@.*)[.]northwestern[.]edu$/)
+  return matches ? matches[1] : email
+}
+
 const printHeader = () => {
   console.log(`| Name | Email |`)
   console.log(`| :--- | :---- |`)
 }
 
-const printUser = ({name, email, id}) => {
-  let matches = email.match(/^(.*@.*)[.]northwestern[.]edu$/)
-  const abbrevEmail = matches ? matches[1] : email
-  const nameMD      = `[${name}](${base}/users/${id})`
-  const emailMD     = `[${abbrevEmail}](mailto:${email})`
-  console.log(`| ${nameMD} | ${emailMD} |`)
+const printUserRow = ({name, abbrevEmail}) => {
+  console.log(`| [${name}] | [${abbrevEmail}] |`)
+}
+
+const printUserLinks = ({name, email, abbrevEmail, url}) => {
+  console.log(`[${name}]: <${url}>`)
+  console.log(`[${abbrevEmail}]: <mailto:${email}>`)
+}
+
+const getTAs = async () => {
+  const result = []
+
+  for await (const user of canvas.getUsers({enrollment_type: 'ta'})) {
+    result.push({
+      name: niceName(user.sortable_name),
+      email: user.email,
+      abbrevEmail: '`' + abbrevEmail(user.email) + '`',
+      url: `${base}/users/${user.id}`
+    })
+  }
+
+  result.push(professor)
+
+  return result
 }
 
 async function main() {
+  const TAs = await getTAs()
+
   printHeader()
-  for await (const user of canvas.getUsers({enrollment_type: 'ta'})) {
-    printUser(user)
+
+  for (const user of TAs) {
+    printUserRow(user)
   }
+
+  console.log(``)
+
+  for (const user of TAs) {
+    printUserLinks(user)
+  }
+
+  const tas = []
 }
 
 main().then(_ => 0, console.log)
