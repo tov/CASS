@@ -28,11 +28,7 @@ if [ -n "$flag_c" ]; then
         private: true,
         is_template: true,
     "
-else
-    "$COURSE_BIN/branch_protection" $remote_name master off || true
 fi
 
 starter=$(git commit-tree 'master^{tree}' -m "Starter code for hw$hw.")
 git push $remote_url +$starter:refs/heads/master
-
-"$COURSE_BIN/branch_protection" $remote_name master on
