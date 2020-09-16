@@ -1,8 +1,8 @@
 const {argv} = require('process')
 
 class MatchAny {
-  constructor(rawPatterns) {
-    this._regexps = rawPatterns.map(pat => new RegExp(pat))
+  constructor(rawPatterns, flags = '') {
+    this._regexps = rawPatterns.map(pat => new RegExp(pat, flags))
   }
 
   test(subject) {

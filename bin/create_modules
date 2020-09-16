@@ -11,7 +11,7 @@ const {par_foreach} = require('./cass/util/async')
 
 async function main() {
   const patterns = getArgs({min: 1, usage: 'PATTERN...+'})
-  const matcher  = new MatchAny(patterns)
+  const matcher  = new MatchAny(patterns, 'i')
   const cass     = new Cass
   const canvas   = cass.canvas()
   const json     = await fs.readFile(cass.base('modules.json'), 'utf8')

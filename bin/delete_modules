@@ -7,7 +7,7 @@ const {par_foreach} = require('./cass/util/async')
 
 async function main() {
   const patterns = getArgs({min: 1, usage: 'PATTERN...+'})
-  const matcher  = new MatchAny(patterns)
+  const matcher  = new MatchAny(patterns, 'i')
   const canvas   = new Cass().canvas()
   const modules  = await canvas.getModules()
 
