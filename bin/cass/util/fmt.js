@@ -29,6 +29,20 @@ const slug = (tag, dayNum, secNum, itemNum) => {
   return `${tag}${day(dayNum)}${section(secNum)}-${itemNum}`
 }
 
+const wikifyTitle = title =>
+  title.replace(/[?'"]/g, '')
+       .replace(/&/g,   ' and ')
+       .replace(/@/g,   ' at ')
+       .replace(/[.]/g, ' dot ')
+       .replace(/#/g,   ' number ')
+       .replace(/%/g,   ' percent ')
+       .replace(/[/]/g, ' slash ')
+       .replace(/[^\w`=+$|><~]/g, '-')
+       .replace(/--+/g, '-')
+       .replace(/^-/g, '')
+       .replace(/-$/g, '')
+       .toLowerCase()
+
 module.exports = {
   alphabet,
   day,
@@ -38,4 +52,5 @@ module.exports = {
   section,
   shortDate,
   slug,
+  wikifyTitle,
 }

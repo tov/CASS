@@ -1,7 +1,8 @@
-const debug      = require('debug')('canvas')
+const debug         = require('debug')('canvas')
 
-const RestClient = require('./rest-client')
-const {buildUri} = RestClient
+const {wikifyTitle} = require('./util/fmt')
+const RestClient    = require('./rest-client')
+const {buildUri}    = RestClient
 
 const baseUri = (C, path, query) =>
   buildUri(`https://${C.host}/api/v1`, path, query)
@@ -82,7 +83,7 @@ class CanvasApi extends RestClient {
     const {body, ...rest} = wiki_page
     debug('createPage(%o)', {...rest, ...info})
 
-    const page_uri = wiki_page.title.replace(/\W+/g, '-').toLowerCase()
+    const page_uri = wikifyTitle(wiki_page.title)
     const uri = pagesUri(this._config, page_uri)
     return this.PUT(uri, {wiki_page})
   }
