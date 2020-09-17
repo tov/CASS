@@ -1,22 +1,33 @@
 #!/usr/bin/env node
 
+const Args          = require('./cass/util/args')
 const Cass          = require('./cass')
 const {ModuleList}  = require('./cass/canvas-modules')
-const {getArgs}     = require('./cass/util/args')
 const {MatchAny}    = require('./cass/util/matchers')
 
+const argv =
+  new Args('delete_modules', '<PATTERN ...>',
+    'Deletes modules matching <PATTERN>s.')
+  .debug()
+  .verbose()
+  .argv
+
+const verbose = argv.verbose ? console.log : () => {}
+
 async function main() {
-  const patterns = getArgs({min: 1, usage: 'PATTERN...+'})
-  const matcher  = new MatchAny(patterns, 'i')
+  const matcher  = new MatchAny(argv.PATTERN, 'i')
   const cass     = new Cass
   const canvas   = cass.canvas()
   const modlist  = await new ModuleList(cass).load()
 
   const promises = []
 
-  for (const mod of modlist.getModules())
-    if (matcher.test(mod.name))
+  for (const mod of modlist.getModules()) {
+    if (matcher.test(mod.name)) {
       promises.push(mod.uncreate())
+      verbose('deleted %s', mod.name)
+    }
+  }
 
   return Promise.all(promises)
 }

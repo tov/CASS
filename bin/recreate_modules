@@ -1,27 +1,38 @@
 #!/bin/sh
 # vim: ts=4 :
 
-# Deletes and recreates Canvas modules based on Panopto sessions
-# and modules.json
-#
-# Usage: recreate_modules [-vF] SESSION ...+
-#
-# Options:
-#
-#   -v      verbose
-#   -F      don't fetch panopto sessions
+usage () {
+    sed -E 's/^ {0,8}//' <<....EOF
+        recreate_modules [-Fv] <PATTERN ...>
+
+        Deletes and recreates Canvas modules matching the given pattern
+        based on Panopto sessions and modules.json.
+
+        Options:
+          -D             Debug mode
+          -F             Don't refetch Panopto session metadata
+          -h             Show this help
+....EOF
+}
 
 . "$(dirname "$0")/.CASS"
-eval "$(getargs -vF ...)"
+eval "$(getargs -hDF ...+)"
+
+if [ -n "$flag_h" ]; then
+    usage
+    exit
+fi
 
 if [ -z "$flag_F" ]; then
     echo Fetching Panopto sessions...
-    records=$("$COURSE_BIN"/fetch_panopto_sessions -v | wc -l | tr -dC 0-9)
-    echo "  (retrieved $records session records)"
+    count=$("$COURSE_BIN"/fetch_panopto_sessions -v | wc -l)
+    echo '>>>' retrieved $count session records
 fi
 
 echo Deleting Canvas modules...
-"$COURSE_BIN"/delete_modules $flag_v "$@"
+count=$("$COURSE_BIN"/delete_modules -v $flag_D "$@" | wc -l)
+echo '>>>' deleted $count modules
 
 echo Creating Canvas modules...
-"$COURSE_BIN"/create_modules $flag_v "$@"
+count=$("$COURSE_BIN"/create_modules -v $flag_D "$@" | wc -l)
+echo '>>>' created $count modules

@@ -1,13 +1,25 @@
 #!/usr/bin/env node
 
-const CanvasApi = require('./cass/canvas-api')
+const Args          = require('./cass/util/args')
+const CanvasApi     = require('./cass/canvas-api')
+const {MatchAny}    = require('./cass/util/matchers')
+
+const argv =
+  new Args('list_modules', '[<PATTERN> ...]',
+    'Lists the modules that are currently on Canvas.')
+  .debug()
+  .json()
+  .argv
 
 async function main() {
-  const canvas = new CanvasApi
-  const modules = await canvas.getModules()
-  for (const each of modules) {
-    console.log(each)
-  }
+  const format  = argv.json ? '%j' : '%o'
+  const matcher = new MatchAny(argv.PATTERN || [''], 'i')
+
+  const canvas  = new CanvasApi
+
+  for (const each of await canvas.getModules())
+    if (matcher.test(each.name))
+      console.log(format, each)
 }
 
 main().then(_ => 0, console.log)

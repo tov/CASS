@@ -1,12 +1,25 @@
 #!/usr/bin/env node
 
-const CanvasApi = require('./cass/canvas-api')
+const Args       = require('./cass/util/args')
+const CanvasApi  = require('./cass/canvas-api')
+const {MatchAny} = require('./cass/util/matchers')
+
+const argv =
+  new Args('fetch_roster', '[<PATTERN> ...]',
+    'Fetches the roster from Canvas.')
+  .debug()
+  .json()
+  .argv
 
 async function main() {
-  const canvas = new CanvasApi
-  for await (const each of canvas.getUsers()) {
-    console.log(each)
-  }
+  const format  = argv.json ? '%j' : '%o'
+  const matcher = new MatchAny(argv.PATTERN || [''], 'i')
+
+  const canvas  = new CanvasApi
+
+  for await (const user of canvas.getUsers())
+    if (matcher.test(user.name))
+      console.log(format, user)
 }
 
 main().then(_ => 0, console.log)
