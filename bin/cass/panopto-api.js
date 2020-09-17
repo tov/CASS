@@ -80,7 +80,7 @@ class PanoptoApi {
     this.bySlug[slug] = session
     this.byDay.setdef(day).setdef(section)[item] = session
 
-    debug('Session %o', {slug, title: session.title})
+    debug({slug, title: session.title})
   }
 
   _loadSessions() {
