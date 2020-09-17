@@ -7,6 +7,7 @@ const loadExercises = (table, current) => {
   if (match) {
     const slug = match[1]
     table[slug] = {slug, filename: current}
+    debug({slug: filename})
   } else try {
     for (const entry of fs.readdirSync(current)) {
       loadExercises(table, path.join(current, entry))
