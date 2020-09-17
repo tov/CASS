@@ -86,17 +86,11 @@ class Cass {
   }
 
   register(obj) {
-    for (const name in obj) {
-      if (name in this) continue
+    for (const key in obj) {
+      if (key in this) continue
 
-      const factory = obj[name]
-      const thunk   =
-        factory.prototype
-        ? () => new factory(this)
-        : factory
-      const lazy    = new Lazy(thunk)
-
-      this[name] = () => lazy.force()
+      const val = new (obj[key])(this)
+      this[key] = () => val
     }
   }
 
