@@ -141,27 +141,31 @@ class SubHeaderItem extends ModuleItem {
 
 
 class PageItem extends ModuleItem {
-  constructor({title, page_url}, cass) {
-    page_url = page_url || Page.titleToUrl(title)
+  constructor(page, cass, create = true) {
+    const {title, page_url = Page.titleToUrl(title)} = page
     super(title, cass, {page_url})
+
+    this._create = create
+    this._page = page
   }
 
   type = 'Page'
+
+  async buildBody() {
+    if (this._create)
+      await this._page.create()
+
+    return super.buildBody()
+  }
 }
 
 class ExerciseItem extends PageItem {
   constructor(title, slug, filename, cass) {
-    const pageTitle = fmt.joinWith(': ', 'Exercise', title)
-    const page      = new Page(pageTitle, filename, cass)
-
+    const pageTitle = title
+      ? `Exercise: ${title} (${slug})`
+      : `Exercise for ${slug}`
+    const page = new Page(pageTitle, filename, cass)
     super(page, cass)
-    this.page = page
-    this.slug = slug
-  }
-
-  async buildBody() {
-    await this.page.create()
-    return super.buildBody()
   }
 }
 
