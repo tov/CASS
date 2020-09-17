@@ -4,12 +4,12 @@
 #
 # Usage:
 #
-#   -q     quiet
+#   -v     verbose
 
 . "$(dirname "$0")/.CASS"
-eval "$(getargs -q)"
+eval "$(getargs -v)"
 
-if [ -n "$flag_q" ]; then
+if [ -z "$flag_v" ]; then
     exec 1>/dev/null
 fi
 
