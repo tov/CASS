@@ -144,7 +144,7 @@ find_single () {
 }
 
 getargs () (
-    usage='Usage: eval "$(getargs [+[CMD]] [-OPTS] ARGNAME... [[RESTNAME]...])"'
+    usage='Usage: eval "$(getargs [+[CMD]] [-OPTS] ARGNAME... [[RESTNAME]...[+]])"'
 
     case "$1" in
         --help|'')
@@ -216,15 +216,29 @@ getargs () (
     fi
 
     define_var missing
-    dotted=false
+    min_rest=0
+    max_rest=0
     for arg; do
         case "$arg" in
             ...)
-                dotted=true
+                min_rest=0
+                max_rest=
                 break
                 ;;
             *...)
-                dotted=true
+                min_rest=0
+                max_rest=
+                define_var "${arg%...}" '$*'
+                break
+                ;;
+            ...+)
+                min_rest=1
+                max_rest=
+                break
+                ;;
+            *...+)
+                min_rest=1
+                max_rest=
                 define_var "${arg%...}" '$*'
                 break
                 ;;
@@ -251,8 +265,17 @@ getargs () (
     BAIL '  ' 3 'Missing arguments:$missing'
     echo 'fi'
 
-    if ! $dotted; then
-        echo 'if ! [ $# = 0 ]; then'
+    if [ -n "$min_rest" ]; then
+        echo '_i='$min_rest
+        echo 'if [ $# -lt $_i ]; then'
+        BAIL '  ' 4 'Need $((_i - $#)) more argument(s)'
+        echo 'fi'
+    fi
+
+    if [ -n "$max_rest" ]; then
+        echo '_i='$max_rest
+        echo 'if [ $# -gt $_i ]; then'
+        echo '  while (( _i-- )); do shift; done'
         BAIL '  ' 4 'Extra arguments: ${@/#/\\n • }'
         echo 'fi'
     fi
