@@ -78,6 +78,8 @@ class ModulePlan {
         const exercise = exercises.find(slug)
         if (exercise) {
           items.push(new ExerciseItem(title, slug, exercise.filename, cass))
+        } else {
+          console.warn(`Could not find exercise for ${slug}.`)
         }
 
         const after = this._after_advice[slug]
