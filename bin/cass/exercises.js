@@ -2,27 +2,36 @@ const debug = require('debug')('exercises')
 const fs   = require('fs')
 const path = require('path')
 
-const loadExercises = (table, current) => {
-  const match = current.match(/\/([a-zA-Z0-9_-]+)\.md$/)
+const softReaddirSync = (dir) => {
+  try {
+    return fs.readdirSync(dir)
+  } catch (_) {
+    return []
+  }
+}
+
+const loadExercises = (table, base, rel = '') => {
+  const abs = path.join(base, rel)
+  const match = abs.match(/\/([a-zA-Z0-9_-]+)\.md$/)
   if (match) {
     const slug = match[1]
-    table[slug] = {slug, filename: current}
-    debug({slug: filename})
-  } else try {
-    for (const entry of fs.readdirSync(current)) {
-      loadExercises(table, path.join(current, entry))
-    }
-  } catch (_) { }
+    table[slug] = {slug, filename: abs}
+    debug({slug, path: rel})
+    return
+  }
+
+  for (const entry of softReaddirSync(abs))
+    loadExercises(table, base, path.join(rel, entry))
 }
 
 class Exercises {
-  constructor(cass = new (require('../cass'))) {
-    const dir = cass.root('..', 'ipd', 'web', 'exercises')
-    loadExercises(this._contents, dir)
+  constructor(cass) {
+    this._base     = cass.root('web', 'exercises')
+    this._contents = {}
+    this._default  = 'default'
+    loadExercises(this._contents, this._base)
   }
 
-  _contents = {}
-  _default  = 'default'
 
   find(slug, use_default = true) {
     return this._contents[slug] ||
