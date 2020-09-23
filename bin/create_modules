@@ -18,8 +18,9 @@ const argv =
 const verbose = argv.verbose ? console.log : () => {}
 
 const do_create = async mod => {
-  await mod.create(argv.force)
-  verbose('created %s', mod.name)
+  if (await mod.create(argv.force)) {
+    verbose('created %s', mod.name)
+  }
 }
 
 const main = async () => {

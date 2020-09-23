@@ -16,8 +16,9 @@ const argv =
 const verbose = argv.verbose ? console.log : () => {}
 
 const do_uncreate = async mod => {
-  await mod.uncreate(argv.force)
-  verbose('deleted %s', mod.name)
+  if (await mod.uncreate(argv.force)) {
+    verbose('deleted %s', mod.name)
+  }
 }
 
 const main = async () => {
