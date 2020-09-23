@@ -9,12 +9,18 @@ const argv =
   new Args('delete_modules', '<PATTERN ...>',
     'Deletes modules matching <PATTERN>s.')
   .debug()
+  .force()
   .verbose()
   .argv
 
 const verbose = argv.verbose ? console.log : () => {}
 
-async function main() {
+const do_uncreate = async mod => {
+  await mod.uncreate(argv.force)
+  verbose('deleted %s', mod.name)
+}
+
+const main = async () => {
   const matcher  = new MatchAny(argv.PATTERN, 'i')
   const cass     = new Cass
   const canvas   = cass.canvas()
@@ -24,8 +30,7 @@ async function main() {
 
   for (const mod of modlist.getModules()) {
     if (matcher.test(mod.name)) {
-      promises.push(mod.uncreate())
-      verbose('deleted %s', mod.name)
+      promises.push(do_uncreate(mod))
     }
   }
 

@@ -11,12 +11,13 @@ usage () {
         Options:
           -D             Debug mode
           -F             Don't refetch Panopto session metadata
+          -f             Force changes
           -h             Show this help
 ....EOF
 }
 
 . "$(dirname "$0")/.CASS"
-eval "$(getargs -hDF ...+)"
+eval "$(getargs -DFfh ...+)"
 
 if [ -n "$flag_h" ]; then
     usage
@@ -30,9 +31,9 @@ if [ -z "$flag_F" ]; then
 fi
 
 echo Deleting Canvas modules...
-count=$("$COURSE_BIN"/delete_modules -v $flag_D "$@" | wc -l)
+count=$("$COURSE_BIN"/delete_modules -v $flag_f $flag_D "$@" | wc -l)
 echo '>>>' deleted $count modules
 
 echo Creating Canvas modules...
-count=$("$COURSE_BIN"/create_modules -v $flag_D "$@" | wc -l)
+count=$("$COURSE_BIN"/create_modules -v $flag_f $flag_D "$@" | wc -l)
 echo '>>>' created $count modules

@@ -11,12 +11,18 @@ const argv =
   new Args('create_modules', '<PATTERN ...>',
     'Creates modules matching <PATTERN>s.')
   .debug()
+  .force()
   .verbose()
   .argv
 
 const verbose = argv.verbose ? console.log : () => {}
 
-async function main() {
+const do_create = async mod => {
+  await mod.create(argv.force)
+  verbose('created %s', mod.name)
+}
+
+const main = async () => {
   const matcher  = new MatchAny(argv.PATTERN, 'i')
   const cass     = new Cass
   const canvas   = cass.canvas()
@@ -24,8 +30,7 @@ async function main() {
 
   for (const mod of modlist.getModules()) {
     if (matcher.test(mod.name)) {
-      await mod.create()
-      verbose('created %s', mod.name)
+      await do_create(mod)
     }
   }
 }
