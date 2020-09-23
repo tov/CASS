@@ -286,6 +286,7 @@ class ProxyModule extends ModuleLike {
     }
 
     await this.cass.canvas().deleteModule(canvasId, {name})
+    return true
   }
 
   async create() {
@@ -308,7 +309,7 @@ class Module extends ModuleLike {
   async create(force = false) {
     if (this.isPosted()) {
       if (force) {
-        await this.uncreate(force)
+        return await this.uncreate(force)
       } else {
         console.warn(`Not reposting already-posted module: ${this.name}`)
         return
@@ -335,7 +336,7 @@ class Module extends ModuleLike {
 
   async uncreate(force = false) {
     if (this.proxy)
-      await this.proxy.uncreate(force)
+      return await this.proxy.uncreate(force)
     else
       console.warn(`Not deleting unposted module: ${this.name}`)
   }
