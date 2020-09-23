@@ -191,9 +191,9 @@ class PanoptoItem extends ExternalItem {
 const HTDP_BASE = 'https://htdp.org/2020-8-1/Book/'
 
 const buildHtdpUri = opts => {
-  const {path, part, i, sec, ch} = opts
+  const {path, part, i: raw_i, sec, ch} = opts
 
-  let uri = HTDP_BASE
+  const i = parseInt(raw_i)
 
   if (path) {
     return `${HTDP_BASE}${path}`
