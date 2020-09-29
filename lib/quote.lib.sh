@@ -45,7 +45,8 @@ shell_quote () {
 
 shell_quote_words () {
     printf '%s' "$(shell_quote "$1")"
-    while shift 2>/dev/null; do
+    while (( $# > 1 )); do
+        shift
         printf ' %s' "$(shell_quote "$1")"
     done
     echo

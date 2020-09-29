@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
+const debug      = require('debug')('fetch_roster')
+const fs         = require('fs')
+const path       = require('path')
+
 const Args       = require('./cass/util/args')
-const CanvasApi  = require('./cass/canvas-api')
+const Cass       = require('./cass')
 const {MatchAny} = require('./cass/util/matchers')
 
 const argv =
@@ -9,17 +13,51 @@ const argv =
     'Fetches the roster from Canvas.')
   .debug()
   .json()
+  .cache()
   .argv
+
+const cass = new Cass
+const cacheFile = cass.cache('canvas', 'roster.json')
+
+const readCache = () => {
+  if (fs.existsSync(cacheFile)) {
+    const json = JSON.parse(fs.readFileSync(cacheFile))
+    debug('cache loaded')
+    return json
+  }
+}
+
+const writeCache = json => {
+  fs.mkdirSync(path.dirname(cacheFile), {recursive: true})
+  fs.writeFileSync(cacheFile, JSON.stringify(json))
+}
+
+const fetchJson = async (action = ()=>{}) => {
+  const canvas = cass.canvas()
+  const result = []
+
+  for await (const user of canvas.getUsers()) {
+    action(user, result.length)
+    result.push(user)
+  }
+
+  return result
+}
 
 async function main() {
   const format  = argv.json ? '%j' : '%o'
   const matcher = new MatchAny(argv.PATTERN || [''], 'i')
-
-  const canvas  = new CanvasApi
-
-  for await (const user of canvas.getUsers())
+  const printer = user => {
     if (matcher.test(user.name))
       console.log(format, user)
+  }
+
+  const data = argv.cache && readCache()
+  if (data) {
+    for (const user of data) printer(user)
+  } else {
+    writeCache(await fetchJson(printer))
+  }
 }
 
 main().then(_ => 0, console.log)

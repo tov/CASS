@@ -2,12 +2,14 @@
 
 . "$(dirname "$0")/.CASS"
 
-eval "$(getargs -c netid propname value)"
+eval "$(getargs -rc netid propname value...+)"
+
+if [ -n "$flag_r" ]; then
+    netid=$(resolve_student $netid) || exit 2
+fi
 
 if [ -n "$flag_c" ]; then
     mkdir -p "$COURSE_DB"/students/$netid
-else
-    netid=$(resolve_student $netid) || exit 2
 fi
 
 printf '%s\n' "$value" > "$COURSE_DB"/students/$netid/$propname

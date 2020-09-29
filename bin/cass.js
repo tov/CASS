@@ -89,8 +89,8 @@ class Cass {
     for (const key in obj) {
       if (key in this) continue
 
-      const val = new (obj[key])(this)
-      this[key] = () => val
+      const val = new Lazy(() => new (obj[key])(this))
+      this[key] = () => val.force()
     }
   }
 

@@ -54,6 +54,11 @@ Args._register({
     description: 'Produce JSON output',
   },
 
+  cache: {
+    boolean: true,
+    description: 'Use cache',
+  },
+
   debug: {
     alias: 'D',
     boolean: true,

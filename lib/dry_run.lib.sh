@@ -5,7 +5,7 @@ course_use quote
 dry_run_if () {
     if "$@"; then
         _N () {
-            printf '> '
+            printf '# '
             shell_quote_words "$@"
         } >&2
     else

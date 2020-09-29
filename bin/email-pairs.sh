@@ -10,7 +10,7 @@ cat "$COURSE_DB/teams/$hw" | while read team a b c; do
 if [ -n "$c" ]; then
 cat <<EOF
 sendmail $(email $a) $(email $b) $(email $c) <<'EOM'
-From: "Jesse A. Tov" <jesse@eecs.northwestern.edu>
+From: "Jesse A. Tov" <jesse@cs.northwestern.edu>
 To: "$(name $a)" <$(email $a)>, "$(name $b)" <$(email $b)>, "$(name $c)" <$(email $c)>
 Subject: HW$hw groups
 
@@ -27,7 +27,7 @@ EOF
 elif [ -n "$b" ]; then
 cat <<EOF
 sendmail $(email $a) $(email $b) <<'EOM'
-From: "Jesse A. Tov" <jesse@eecs.northwestern.edu>
+From: "Jesse A. Tov" <jesse@cs.northwestern.edu>
 To: "$(name $a)" <$(email $a)>, "$(name $b)" <$(email $b)>
 Subject: HW$hw pairs
 
@@ -45,7 +45,7 @@ EOF
 else
 cat <<EOF
 sendmail $(email $a)  <<'EOM'
-From: "Jesse A. Tov" <jesse@eecs.northwestern.edu>
+From: "Jesse A. Tov" <jesse@cs.northwestern.edu>
 To: "$(name $a)" <$(email $a)>
 Subject: HW$hw pairs
 
