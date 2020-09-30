@@ -18,8 +18,6 @@ Dear $(name $a), $(name $b), and $(name $c),
 
 You have been assigned as partners for Homework $hw.
 
-Please note that only one of you should submit the homework on Canvas.
-
 Best,
 Jesse
 EOM
@@ -35,8 +33,6 @@ Dear $(name $a) and $(name $b),
 
 You have been assigned as partners for Homework $hw. If one of you drops
 the course, please let us know ASAP so your partner isn't disadvantaged.
-
-Please note that only one of you should submit the homework on Canvas.
 
 Best,
 Jesse
