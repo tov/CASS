@@ -2,19 +2,24 @@
 
 # upload.sh: uploads the course web site.
 #
-#  -m   upload man pages as well (-W && -S implies -m)
-#  -W   skip uploading website
-#  -S   skip uploading shell stuff
-#  -v   verbose
+#  -a   upload everything
+#  -m   upload man pages
+#  -s   upload shell stuff
+#  -w   upload web site
+#
+# Defaults to -sw
 
 . "$(dirname "$0")/.CASS"
-eval "$(getargs -mWSv)"
+eval "$(getargs -amsw)"
 
-if [ -n "$flag_W" ] && [ -n "$flag_S" ]; then
+if [ -n "$flag_a" ]; then
     flag_m=-m
+    flag_s=-s
+    flag_w=-w
+elif [ -z "$flag_m$flag_s$flag_w" ]; then
+    flag_s=-s
+    flag_w=-w
 fi
-
-staging=$COURSE_VAR/staging
 
 assert_branch () {
     local actual
@@ -37,29 +42,42 @@ assert_branch () {
     fi
 }
 
+rsync_upload () {
+    rsync \
+        --chmod=a+rX,go-w \
+        --compress \
+        --copy-unsafe-links \
+        --delete \
+        --exclude '.nfs*' \
+        --links \
+        --omit-dir-times \
+        --recursive \
+        --times \
+        --verbose \
+        "$COURSE_VAR/staging/$1/" \
+        "$2"
+}
+
+
 upload_man () {
-    : ${shell_host? needs to be set in /etc/config.sh}
-    : ${man_update_cmd? needs to be set in /etc/config.sh}
+    : ${shell_host? needs to be set in etc/course.config}
+    : ${man_update_cmd? needs to be set in etc/course.config}
 
     ssh "$shell_host" $man_update_cmd
 }
 
 upload_shell () {
-    : ${shell_host? needs to be set in /etc/config.sh}
-    : ${shell_path? needs to be set in /etc/config.sh}
+    : ${shell_host? needs to be set in etc/course.config}
+    : ${shell_path? needs to be set in etc/course.config}
 
-    rsync -avz --chmod=a+rX --delete \
-        $staging/shell/ \
-        cs211@$shell_host:$shell_path
+    rsync_upload shell cs211@$shell_host:$shell_path
 }
 
 upload_web () {
-    : ${web_host? needs to be set in /etc/config.sh}
-    : ${web_path? needs to be set in /etc/config.sh}
+    : ${web_host? needs to be set in etc/course.config}
+    : ${web_path? needs to be set in etc/course.config}
 
-    rsync -avz --chmod=a+rX --delete \
-        $staging/web/ \
-        $web_host:$web_path
+    rsync_upload web $web_host:$web_path
 }
 
 cd "$COURSE_ROOT"
@@ -70,11 +88,11 @@ cd "$COURSE_ROOT"
 # assert_branch lib/dot-cs211/lib/ge211   refs/heads/release
 # assert_branch lib/dot-cs211/lib/catch   refs/heads/master
 
-if [ -z "$flag_W" ]; then
+if [ -n "$flag_w" ]; then
     upload_web &
 fi
 
-if [ -z "$flag_S" ]; then
+if [ -n "$flag_s" ]; then
     upload_shell &
 fi
 
