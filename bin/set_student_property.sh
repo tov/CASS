@@ -2,7 +2,7 @@
 
 . "$(dirname "$0")/.CASS"
 
-eval "$(getargs -rc netid propname value...+)"
+eval "$(getargs -rc netid propname value...)"
 
 if [ -n "$flag_r" ]; then
     netid=$(resolve_student $netid) || exit 2
