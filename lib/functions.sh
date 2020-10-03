@@ -154,13 +154,13 @@ getargs () (
         '+'*)
             cmd=${1#+}; shift
             define_var () {
-                echo "local $1; $1=${2-}"
+                echo "${3-}local $1; $1=\"${2-}\""
             }
             ;;
         *)
             cmd=$0
             define_var () {
-                echo "$1=${2-}"
+                echo "${3-}$1=\"${2-}\""
             }
             ;;
     esac
@@ -189,73 +189,90 @@ getargs () (
         echo "${i}exit $result"
     }
 
+    process_flags () {
+        local indent; indent=$1; shift
+        (
+        echo 'while (( $# )); do'
+        echo '  case "$1" in'
+
+        while (( $# )); do
+            printf '    %s-%s)' "$indent" $1
+            printf ' flag_%s=-%s; shift;;\n' $1 $1
+            printf '    %s-%s*)' "$indent" $1
+            printf ' flag_%s=-%s;' $1 $1
+            printf ' _next_actual_flag_to_process="-${1#-%s}";' $1
+            printf ' shift;'
+            printf ' set -- "$_next_actual_flag_to_process" "$@";;\n'
+            shift
+        done
+
+        echo '    -) break;;'
+        echo '    --) shift; break;;'
+        echo '    -*)'
+        BAIL '      ' 2 'Unknown flag: $1'
+        echo '    ;;'
+        echo '    *) break;;'
+        echo '  esac'
+        echo 'done'
+        ) | sed "s/^/$indent/"
+    }
+
     if [ -n "$flags" ]; then
-        define_var actual_given_flag
         local exploded; exploded=$(explode_words $flags)
         for flag in $exploded; do
             define_var flag_$flag
         done
-        echo 'while [ $# -gt 0 ]; do'
-        echo '  case "$1" in'
-        echo '    --) shift; break;;'
-        echo '    -)  break;;'
-        echo '    -*)'
-        echo '      for actual_given_flag in $(explode_words ${1#-}); do'
-        echo '        case "$actual_given_flag" in'
-        for flag in $exploded; do
-            echo "          $flag) flag_$flag=-$flag ;;"
-        done
-        echo '          *)'
-        BAIL '            ' 2 'Unknown flag: $1'
-        echo '        esac'
-        echo '      done'
-        echo '      shift;;'
-        echo '    *)  break;;'
-        echo '  esac'
-        echo 'done'
+
+        define_var _next_actual_flag_to_process
+        process_flags '' $exploded
     fi
 
     define_var missing
-    min_rest=0
+    min_rest=
     max_rest=0
     for arg; do
         case "$arg" in
-            ...)
-                min_rest=0
-                max_rest=
-                break
-                ;;
             *...)
-                min_rest=0
+                min_rest=
                 max_rest=
-                define_var "${arg%...}" '$*'
-                break
-                ;;
-            ...+)
-                min_rest=1
-                max_rest=
+                if [ -n "${arg%...}" ]; then
+                    define_var "${arg%...}" '$*'
+                fi
                 break
                 ;;
             *...+)
                 min_rest=1
                 max_rest=
-                define_var "${arg%...}" '$*'
+                if [ -n "${arg%...+}" ]; then
+                  define_var "${arg%...+}" '$*'
+                fi
                 break
                 ;;
-            ?*=*)
-                echo 'if [ $# = 0 ]; then'
-                    define_var ${arg%%=*} ${argv#*=}
-                echo 'else'
-                    define_var ${arg%%=*} '$1'
+            ?*:=*)
+                echo 'if [ -n "${1-}" ]; then'
+                define_var ${arg%%:=*} '$1' '  '
                 echo '  shift'
+                process_flags '  ' $exploded
+                echo 'else'
+                define_var ${arg%%:=*} ${arg#*:=} '  '
+                echo 'fi'
+                ;;
+            ?*=*)
+                echo 'if (( $# )); then'
+                    define_var ${arg%%=*} '$1' '  '
+                echo '  shift'
+                process_flags '    ' $exploded
+                echo 'else'
+                    define_var ${arg%%=*} ${arg#*=} '  '
                 echo 'fi'
                 ;;
             *)
-                echo 'if [ $# = 0 ]; then'
-                printf '  missing="$missing %s"\n' $(echo $arg | tr a-z A-Z)
-                echo 'else'
-                    define_var $arg '$1'
+                echo 'if (( $# )); then'
+                    define_var $arg '$1' '  '
                 echo '  shift'
+                process_flags '    ' $exploded
+                echo 'else'
+                printf '  missing="$missing %s"\n' $(echo $arg | tr a-z A-Z)
                 echo 'fi'
                 ;;
         esac
@@ -266,19 +283,20 @@ getargs () (
     echo 'fi'
 
     if [ -n "$min_rest" ]; then
-        echo '_i='$min_rest
-        echo 'if [ $# -lt $_i ]; then'
-        BAIL '  ' 4 'Need $((_i - $#)) more argument(s)'
+        echo "if (( \$# < $min_rest )); then"
+        BAIL '  ' 4 "Need \$(($min_rest - \$#)) more argument(s)"
         echo 'fi'
     fi
 
     if [ -n "$max_rest" ]; then
-        echo '_i='$max_rest
-        echo 'if [ $# -gt $_i ]; then'
-        echo '  while (( _i-- )); do shift; done'
-        BAIL '  ' 4 'Extra arguments: ${@/#/\\n • }'
+        echo "if (( \$# > $max_rest )); then"
+        define_var _getargs_temp $max_rest '  '
+        echo "  while (( _getargs_temp-- )); do shift; done"
+        BAIL '  ' 4 'Extra arguments: ${@/#/
+ • }'
         echo 'fi'
     fi
+
 )
 
 ### BEGIN helpers for getargs
