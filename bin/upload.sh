@@ -44,18 +44,20 @@ assert_branch () {
 
 rsync_upload () {
     rsync \
-        --chmod=a+rX,go-w \
         --compress \
         --copy-unsafe-links \
         --delete \
         --exclude '.nfs*' \
+        --exclude '/.*' \
         --links \
         --omit-dir-times \
         --recursive \
         --times \
         --verbose \
         "$COURSE_VAR/staging/$1/" \
-        "$2"
+        "$2:$3"
+
+    ssh "$2" chmod -R a+rX,g-w "$3"
 }
 
 
@@ -70,14 +72,14 @@ upload_shell () {
     : ${shell_host? needs to be set in etc/course.config}
     : ${shell_path? needs to be set in etc/course.config}
 
-    rsync_upload shell cs211@$shell_host:$shell_path
+    rsync_upload shell cs211@$shell_host $shell_path
 }
 
 upload_web () {
     : ${web_host? needs to be set in etc/course.config}
     : ${web_path? needs to be set in etc/course.config}
 
-    rsync_upload web $web_host:$web_path
+    rsync_upload web $web_host $web_path
 }
 
 cd "$COURSE_ROOT"
