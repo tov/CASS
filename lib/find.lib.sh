@@ -16,7 +16,7 @@ find_tests_log () {
 }
 
 find_goal_txt () {
-    printf '%s/Resources/goal.txt' "$(find_team_repo "$1" "$2")"
+    printf '%s/goal.txt' "$(find_team_repo "$1" "$2")"
 }
 
 find_homework () {
