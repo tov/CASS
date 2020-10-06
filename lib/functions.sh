@@ -562,13 +562,6 @@ sed_has_l_flag () {
     "$1" -l '' </dev/null
 }
 
-date_has_pctN () {
-    case "$($1 +%N)" in
-        *N) false;;
-        *)  true;;
-    esac
-}
-
 find_unbuffered_sed () {
     local candidate
     for candidate; do
@@ -580,22 +573,9 @@ find_unbuffered_sed () {
             UNBUFFERED_SED="$candidate -l"
             return 0
         fi
-    done
+    done 2>/dev/null
 
     cass_error 17 'could not find sed with unbuffered option'
-}
-
-find_pctN_date () {
-    local candidate
-    for candidate; do
-        candidate=$(which $candidate) || continue
-        if date_has_pctN $candidate; then
-            PCT_N_DATE=$candidate
-            return 0
-        fi
-    done
-
-    cass_error 18 'could not find date with %N support'
 }
 
 find_unbuffered_sed gsed sed
@@ -603,7 +583,40 @@ ubsed () {
     $UNBUFFERED_SED "$@"
 }
 
-find_pctN_date gdate date
-date () {
-    $PCT_N_DATE "$@"$gnu_date
+date_is_gnu () {
+    test "$($1 -d 01/20/2021 +%Y%m%d)" = 20210120
 }
+
+find_gnu_date () {
+    local candidate
+    for candidate; do
+        candidate=$(which $candidate) || continue
+        if date_is_gnu $candidate; then
+            PCT_N_DATE=$candidate
+            return 0
+        fi
+    done 2>/dev/null
+
+    cass_error 18 'could not find GNU date'
+}
+
+find_gnu_date hdate gdate date
+date () {
+    $PCT_N_DATE "$@"
+}
+
+gdate () {
+    $PCT_N_DATE "$@"
+}
+
+FMT_BIN=$(which fmt)
+if "$FMT_BIN" -sd '' </dev/null >/dev/null 2>&1; then
+    fmt () {
+        "$FMT_BIN" -sd '' "$@"
+    }
+else
+    fmt () {
+        "$FMT_BIN" "$@" | sed -E 's/([.!?] ) /\1/g'
+    }
+fi
+
