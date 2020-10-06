@@ -486,7 +486,9 @@ ref_exists () {
 }
 
 _cass_error_putln () {
-    echo>&4 "$@" || echo>&2 "$@" || exit 255
+    { printf>&4 ''; } 2>/dev/null || exec 4>&2
+
+    echo>&4 "$@" || exit 255
 }
 
 cass_fatal () {
