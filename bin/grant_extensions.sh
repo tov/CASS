@@ -1,7 +1,7 @@
 #!/bin/sh
 
 . "$(dirname "$0")/.CASS"
-course_use find grade
+course_use datetime dry_run find grade
 
 LANG=en_US.UTF-8
 export LANG
@@ -18,7 +18,7 @@ select_netids () {
     local netid
     if [ -n "$netids" ]; then
         for netid in $netids; do
-            resolve_student $flag_R "$netid"
+            resolve_student ${flag_R:+-C} "$netid"
         done
     else
         all_netids | while read netid; do
@@ -58,16 +58,11 @@ extend_all () {
     done
 }
 
-date_fmt='%A, %d %B'
-time_fmt='%l:%M %p'
-datetime_fmt="$time_fmt on $date_fmt (%Z)"
-tomorrow_fmt="$time_fmt %Z tomorrow (%a.)"
-gscd_fmt='%Y-%m-%d %H:%M:%S %z'
 
 next_deadline () {
-    deadline=$(gdate +'tomorrow %H:59')
-    machine_datetime=$(gdate -d "$deadline" +"$gscd_fmt")
-    human_datetime=$(gdate -d "$deadline" +"$tomorrow_fmt")
+    deadline=$(date +'tomorrow %H:59')
+    human_datetime=$(human_datetime -d "$deadline")
+    gscd_datetime=$(gscd_datetime -d "$deadline")
 }
 
 pct_score () {
@@ -82,20 +77,15 @@ graf () {
 extend_one () {
     if unit_score=$(get_hw_score $hw $netid); then
         score=$(bc_expr "100 * $unit_score")
+        int_score=${score%%.*}
     else
         score=-
     fi
 
-    if $first_time; then
-        echo "Hello, I am ${0##*/}, and the time is"
-        date +"$datetime_fmt".
-    else
-        echo "Hello again, I am ${0##*/}, and it’s now"
-        date +"$datetime_fmt".
-    fi | graf
+    echo "Hello! I am ‘${0##*/},’ and the time is $(human_datetime)." | graf
 
     if ! goal=$(get_hw_goal $hw $netid); then
-        goal=101
+        goal=100
         graf <<........GRAF
             I found your goal.txt, but I had some trouble
             understanding it. Here’s the error message:
@@ -107,15 +97,25 @@ extend_one () {
         graf <<........GRAF
             I’ll set your goal to ${goal}% for now to be safe.
             Be sure to put nothing but the number,
-            like 75 or 99, in the file.
+            such as 75 or 99, in the file.
 ........GRAF
     elif [ -z "$goal" ]; then
         goal=100
         graf <<........GRAF
-            Looks like you haven’t uploaded a goal.txt.
-            I’ll set your goal to 100% for now.
+            Looks like you haven’t uploaded a goal.txt, so
+            I’ll set your goal to ${goal}% for now.
             That’s just the default, though, and you may
-            set it however you wish.
+            set it however you wish by submitting a file named
+            goal.txt that contains your goal percentage.
+........GRAF
+        test "$score" = - || graf <<........GRAF
+
+            For example, if you put uploaded a goal.txt containing the
+            number $((int_score + 1)), then because that exceeds your
+            current score of $score, I would automatically grant you a
+            24-hour extension. But if you set your goal to
+            $((int_score - 1)) then I would not grant you an extension,
+            because you’ve already reached that goal.
 ........GRAF
     else
         graf <<........GRAF
@@ -135,8 +135,8 @@ extend_one () {
     if bc_cond "$score < $goal"; then
         echo>&2 "$slug: Granting extension."
         next_deadline
-        echo "You now have an extension until ${human_datetime# }."
-        _N gsc $flag_v admin extend hw$hw $netid "$machine_datetime"
+        echo "You now have an extension until ${human_datetime}."
+        _N gsc $flag_v admin extend hw$hw $netid "$gscd_datetime"
     else
         echo>&2 "$slug: No extension needed."
         echo 'No extension needed.'
@@ -153,15 +153,7 @@ if [ -n "$flag_q" ]; then
     exec 1>/dev/null
 fi
 
-if [ -n "$flag_N" ]; then
-    _N () {
-        echo '(dry run)' "$*"
-    }
-else
-    _N () {
-        "$@" >/dev/null
-    }
-fi
+dry_run_if [ -n "$flag_N" ]
 
 select_netids | extend_all
 
