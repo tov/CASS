@@ -525,15 +525,21 @@ get_line_indent () {
 
 unindent () {
     local line
-    local script
+    local indent
 
-    line=$(head -1)
-    script="s/^$(get_line_indent "$line")//;$1"
+    while line=$(head -1); do
+        if [ -n "$(printf %s "$line" | tr -d ' \n\t')" ]; then
+            indent=$(get_line_indent "$line")
+            break
+        else
+            printf '\n'
+        fi
+    done
 
     {
         printf '%s\n' "$line"
         cat
-    } | expand | ubsed -E "$script"
+    } | expand | ubsed -E "s/^${indent}//;$1"
 }
 
 short_prog_name () {
