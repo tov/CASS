@@ -46,7 +46,6 @@ rsync_upload () {
     rsync \
         --compress \
         --copy-unsafe-links \
-        --delete \
         --exclude '.nfs*' \
         --exclude '/.*' \
         --links \
