@@ -52,7 +52,7 @@ print_score () {
     fi
 
     if [ "$score" = - ]; then
-        printf "  %-{format_len}s  " ---
+        printf "  %-${format_len}s  " ---
     else
         printf "  $format  " "$(bc_expr "$points * $score")"
     fi
@@ -85,9 +85,9 @@ read_scores () (
             continue
         fi
 
-        if score=$(get_hw_score $hw $netid); then
-            print_score "$netid" "$score"
-        fi
+        score=$(get_hw_score $hw $netid) ||
+            score=-
+        print_score "$netid" "$score"
     done
 )
 
