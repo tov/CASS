@@ -85,7 +85,6 @@ extend_one () {
     echo "Hello! I am ‘${0##*/},’ and the time is $(human_datetime)." | graf
 
     if ! goal=$(get_hw_goal $hw $netid); then
-        goal=100
         graf <<........GRAF
             I found your goal.txt, but I had some trouble
             understanding it. Here’s the error message:
@@ -94,6 +93,7 @@ extend_one () {
         _E echo "    expected content:  a number between 0 and 100"
         _E echo "    actual content:    ‘${goal}’"
         _E echo
+        goal=100
         graf <<........GRAF
             I’ll set your goal to ${goal}% for now to be safe.
             Be sure to put nothing but the number,
