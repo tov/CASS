@@ -688,7 +688,6 @@ get_hw_score () {
 
 # $1: hw
 # $2: netid
-_goal_regexp='[[:space:]]*\([0-9][0-9.]*\)[%[:space:]]*$'
 get_hw_goal () {
     local goal_txt
     local goal_str
@@ -696,14 +695,21 @@ get_hw_goal () {
 
     goal_txt=$(find_goal_txt "$1" "$2")
 
-    if ! goal_str=$(cat "$goal_txt" 2>/dev/null); then
+    goal_str=$(cat "$goal_txt" 2>/dev/null) ||
         return 0
-    fi
 
-    if  goal=$(expr "x$goal_str" : "x$_goal_regexp") &&
-        bc_cond "$goal == $goal" 2>/dev/null
-    then
+    goal="$(printf %s "$goal_str" | sed -E '
+        /^[[:space:]]*([0-9][0-9]*([.][0-9]*)?)[%[:space:]]*$/ {
+            s//\1/
+            q
+        }
+
+        d
+    ')"
+
+    if [ -n "$goal" ]; then
         printf %s "$goal"
+        return 0
     else
         printf %s "$goal_str"
         return 1
