@@ -112,8 +112,8 @@ extend_one () {
 
             For example, if you put uploaded a goal.txt containing the
             number $((int_score + 1)), then because that exceeds your
-            current score of $score, I would automatically grant you a
-            24-hour extension. But if you set your goal to
+            current score of $(pct_score $score), I would automatically
+            grant you a 24-hour extension. But if you set your goal to
             $((int_score - 1)) then I would not grant you an extension,
             because you’ve already reached that goal.
 ........GRAF
