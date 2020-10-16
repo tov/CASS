@@ -110,7 +110,7 @@ extend_one () {
 ........GRAF
         test "$score" = - || graf <<........GRAF
 
-            For example, if you put uploaded a goal.txt containing the
+            For example, if you uploaded a goal.txt containing the
             number $((int_score + 1)), then because that exceeds your
             current score of $(pct_score $score), I would automatically
             grant you a 24-hour extension. But if you set your goal to
