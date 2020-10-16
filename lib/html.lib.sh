@@ -1,5 +1,8 @@
 # HTML output for grading.
 
+del_char=$(printf '\x7F')
+esc_char=$(printf '\x1B')
+
 html_escape () {
     ubsed -E '
         s@&@\&amp;@g
@@ -135,6 +138,7 @@ html_io_lines () {
             bloop
         }
         s@'"$del_char"'@<span class="control-char">\\x7F</span>@g
+        s@'"$esc_char"'@<span class="control-char">\\x1B</span>@g
         s@.*@'"$tag"'&</span>@
     ' | sanitize_utf8
 
