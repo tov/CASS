@@ -13,6 +13,14 @@ get_points_helper () {
     esac
 }
 
+points_if () {
+    if "$@"; then
+        echo $points
+    else
+        echo 0
+    fi
+}
+
 alias local_points='local old_points; old_points=${points-}; local points; points=$old_points'
 alias get_points='get_points_helper "$@" || shift'
 alias local_get_points='local_points; get_points'
@@ -90,6 +98,19 @@ reset_points () {
     failed=0
     actual=0
     possible=0
+}
+
+capture_points () {
+    _captured_actual_points=$actual
+    _captured_possible_points=$possible
+}
+
+captured_actual () {
+    echo $((actual - _captured_actual_points))
+}
+
+captured_possible () {
+    echo $((possible - _captured_possible_points))
 }
 
 # ready to grade:

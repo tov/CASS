@@ -141,6 +141,7 @@ program_test () {
     local docker_opts;  docker_opts=
 
     local check_sh;     check_sh=$prefix.check.sh
+    local check_out;    check_out=$prefix.check.out
     local message;      message=$prefix.msg
 
     local_get_points
@@ -162,7 +163,7 @@ program_test () {
     touch "$act_in"
 
     local p
-    local np; np=$points
+    local np; np=+$points
 
     while [ -n "$1" ]; do
         case "$1" in
@@ -172,7 +173,7 @@ program_test () {
                 shift
                 ;;
             +*)
-                np=${1#+}
+                np=$1
                 shift
                 ;;
             -x*)
@@ -204,11 +205,11 @@ program_test () {
                 ;;
             -c*)
                 get_param
-                do_later check_exitcode $np "=$p"
+                do_later check_exitcode $np "$p" = "$act_exitcode"
                 ;;
             -C*)
                 get_param
-                do_later check_exitcode $np "≠$p"
+                do_later check_exitcode $np "$p" ≠ "$act_exitcode"
                 ;;
             -d*)
                 get_param
@@ -226,52 +227,65 @@ program_test () {
 
     sed '/^1 /!d; s/^..//' "$act_both" >|"$act_out"
     sed '/^2 /!d; s/^..//' "$act_both" >|"$act_err"
-    last_exitcode=$(cat "$act_exitcode")
 
-    html_test_case Test case $tag: $(print_filename "./$command")
+    capture_points
+
+    . "$check_sh" > "$check_out"
+
+    html_test_case $(captured_actual) $(captured_possible) \
+        "Test case $tag: $(print_filename "./$command")"
 
     if [ -f "$message" ]; then
         html_p "$(cat "$message")"
     fi
 
-    html_subhead Input:
-    html_io_lines '‹' stdin < "$act_in"
+    if [ $(file_size "$act_in") -gt 0 ]; then
+        html_subhead Input:
+        html_io_lines '‹' stdin < "$act_in"
+    fi
 
     display_output '›' stdout 'Standard Output' "$exp_out" "$act_out"
     display_output '»' stderr 'Standard Error'  "$exp_err" "$act_err"
     display_output ':' stdlog 'Test Log'        "$exp_log" "$act_log"
+    display_last_exitcode "$act_exitcode"
 
-    check_last_exitcode
-
-    . "$check_sh"
-
-    last_stdout=$act_out
-    last_stderr=$act_err
-    last_stdlog=$act_log
+    cat "$check_out"
 }
 
+#[+N: available points]
+# $1: expected output (filename)
+# $2: actual output (filename)
+# $3: output stream name
+check_output () {
+    local_get_points
+    html_p Comparing actual $3 to expected $3.
+    score_if cmp -s "$1" "$2"
+}
+
+#[+N: available points]
+# $1: expected exit code
+# $2: '=' or '≠'
+# $3: actual exit code (filename)
 check_exitcode () {
     local_get_points
-    case "$1" in
-        =*)
-            set -- "${1#=}"
+    set -- "$1" "$2" "$(cat "$3")"
+    case $2 in
+        =)
             html_p Checking that exit code == $1.
-            score_if [ "$1" = "$last_exitcode" ]
+            score_if [ "$1" = "$3" ]
             ;;
-        '≠'*)
-            set -- "${1#≠}"
+        '≠')
             html_p Checking that exit code \!= $1.
-            score_if [ "$1" != "$last_exitcode" ]
+            score_if [ "$1" != "$3" ]
             ;;
     esac
-
 }
 
-# $1: sigil             '»'
-# $2: class             stderr
-# $3: stream name       'Standard Error'
-# $4: expected (file)   "$exp_err"
-# $5: actual (file)     "$act_err"
+# $1: sigil                        '»'
+# $2: class                        stderr
+# $3: stream name                  'Standard Error'
+# $4: expected output (filename)   "$exp_err"
+# $5: actual output (filename)     "$act_err"
 display_output () {
     if [ -f "$4" ]; then
         html_subhead Expected $3:
@@ -284,14 +298,10 @@ display_output () {
     fi
 }
 
-check_output () {
-    local_get_points
-    html_p Comparing actual $4 to expected $4.
-    score_if cmp -s "$2" "$3"
-}
-
-check_last_exitcode () {
-    case "$last_exitcode" in
+# $1: actual exit code (filename)
+display_last_exitcode () {
+    set -- $(cat "$1")
+    case $1 in
         '')
             echo>&2 Blank exit code\?
             exit 10
@@ -317,7 +327,7 @@ check_last_exitcode () {
 
         *)
             html_subhead Exit Code: \
-                '<em class="exit-error">'$last_exitcode'</em>'
+                '<em class="exit-error">'$1'</em>'
             ;;
     esac
 }
@@ -454,9 +464,12 @@ _print_magic_int_appearances () {
 
 assert_repeated_magic_int_absence () {
     local_get_points
-    local magic_ints
 
-    html_test_case Checking for repeated magic '<code>int</code>' literals
+    local magic_ints
+    magic_ints=$(extract_repeated_int_literals "$@")
+
+    html_test_case $(points_if [ -z "$magic_ints" ]) $points \
+        'Checking for repeated magic <code>int</code> literals'
     html_p Unnamed literal constants \(“magic numbers”\) make your \
         code harder to understand and harder to change. Repeating the \
         same magic number in more than one place is especially bad. \
@@ -464,7 +477,6 @@ assert_repeated_magic_int_absence () {
         single-digit numbers and powers of 10, since those often appear \
         for legitimate reasons\).
 
-    magic_ints=$(extract_repeated_int_literals "$@")
     if [ -z "$magic_ints" ]; then
         score_if true
     else
@@ -484,10 +496,20 @@ assert_repeated_magic_int_absence () {
     fi
 }
 
+cat_source_file () {
+    case $1 in
+        (*.h|*.c|*.hxx|*.cxx|*.hpp|*.cpp)
+            strip_comments "$1"
+            ;;
+        (*)
+            cat "$1"
+            ;;
+    esac
+}
+
 assert_pattern_absence () {
     local_get_points
     local success;      success=true
-    local tmpfile;      tmpfile=
     local TYPE;         TYPE=$1;        shift
     local THING;        THING=$1;       shift
     local pattern;      pattern=$1;     shift
@@ -499,31 +521,34 @@ assert_pattern_absence () {
     done
     shift
 
-    local FILE_PL=$(args_to_pl "$@")
-    local FILE=$(print_conj_with print_filename "$@")
-    local FILEBASE=$(print_conj_with print_filename_base "$@")
-
-    html_test_case Checking for $TYPE $THING in $FILEBASE
-    html_p "$(eval "echo \"$explanation\"")"
-
-    local srcfile
     local filename
     for filename; do
-        srcfile=$filename
-        case "$filename" in
-            *.h|*.c|*.hxx|*.cxx|*.hpp|*.cpp)
-                new_tester_tmpfile
-                strip_comments "$filename" >"$tmpfile"
-                srcfile=$tmpfile
-        esac
-
-        if egrep -sq "$pattern" "$srcfile"; then
+        if cat_source_file "$filename" | egrep -sq "$pattern"; then
             success=false
-            html_subhead "Found in $(print_filename "$filename")"
-            egrep -nC2 "$pattern" "$srcfile" 2>&1 |
-                html_grep_output "$pattern" || true
+            break
         fi
     done
+
+    local FILE_PL;  FILE_PL=$(args_to_pl "$@")
+    local FILE;     FILE=$(print_conj_with print_filename "$@")
+    local FILEBASE; FILEBASE=$(print_conj_with print_filename_base "$@")
+
+    html_test_case $(points_if $success) $points \
+        "Checking for $TYPE $THING in $FILEBASE"
+    html_p "$(eval "echo \"$explanation\"")"
+
+    if ! $success; then
+        local tmpfile
+        new_tester_tmpfile
+        for filename; do
+            cat_source_file "$filename" >"$tmpfile"
+            if egrep -sq "$pattern" "$tmpfile"; then
+                html_subhead "Found in $(print_filename "$filename")"
+                egrep -nC2 "$pattern" "$tmpfile" 2>&1 |
+                    html_grep_output "$pattern" || true
+            fi
+        done
+    fi
 
     score_if $success
 }

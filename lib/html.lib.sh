@@ -66,14 +66,20 @@ html_try_close_test_case () {
 
 html_test_case () {
     html_try_close_test_case
-    printf '<details class="test-case" open="open">\n'
+
+    printf '<details class="test-case '
+    if [ "$1" = "$2" ]; then
+        printf 'test-case-passed">\n'
+    else
+        printf 'test-case-failed" open="open">\n'
+    fi
     printf '<summary>'
     textf '=====\n'
     textf '===== '
 
     printf '<h3>'
-    printf '%s' "$*"
-    printf '</h3>\n' "$*"
+    printf '%s' "$3 ($1 / $2)"
+    printf '</h3>\n'
 
     printf '</summary>'
     textf '=====\n'
