@@ -67,18 +67,25 @@ html_try_close_test_case () {
 html_test_case () {
     html_try_close_test_case
 
-    printf '<details class="test-case '
+    local outcome
+    local attr
     if [ "$1" = "$2" ]; then
-        printf 'test-case-passed">\n'
+        outcome=passed
+        attr=
     else
-        printf 'test-case-failed" open="open">\n'
+        outcome=failed
+        attr='open="open"'
     fi
+
+
+    printf '<details class="test-case" %s>\n' "$attr"
     printf '<summary>'
     textf '=====\n'
     textf '===== '
 
-    printf '<h3>'
-    printf '%s' "$3 ($1 / $2)"
+    printf '<h3 class="%s">' "$outcome"
+    printf '<span>(<em>%s</em> / <em>%s</em>)</span> ' "$1" "$2"
+    printf '%s' "$3"
     printf '</h3>\n'
 
     printf '</summary>'
