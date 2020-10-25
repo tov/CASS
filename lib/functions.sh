@@ -144,6 +144,7 @@ find_single () {
 }
 
 getargs () (
+    set +x
     usage='Usage: eval "$(getargs [+[CMD]] [-OPTS] ARGNAME... [[RESTNAME]...[+]])"'
 
     case "$1" in
