@@ -648,11 +648,13 @@ print_points_summary () {
     printf '</tbody>\n'
     printf '</table>\n'
 
-    if [ -n "$NO_POINTS_MODE" ]; then
-        echo -
-    else
-        bc_expr "$actual / $possible"
-    fi
+    printf '<div class="txt-only">%s</div>\n' "$(
+        if [ -z "$NO_POINTS_MODE" ]; then
+            bc_expr "$actual / $possible"
+        else
+            echo -
+        fi
+    )"
 }
 
 detect_language () {
