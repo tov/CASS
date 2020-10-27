@@ -29,6 +29,8 @@ title: IPD Manual Pages
 }
 
 process_files () {
+    last_apropos=
+
     while read file; do
         printf '| '
         process_file "$file"
@@ -46,8 +48,21 @@ process_file () {
         man_ref "$markdown" "$original"
     fi
 
-    printf ' | '
-    extract_apropos "$1"
+    puts ' | '
+
+    apropos="$(extract_apropos "$1")"
+    if [ "$apropos" = "$last_apropos" ]; then
+        puts '”'
+        nbsps 8
+        puts '”'
+        nbsps 8
+        puts '”'
+        nbsps 8
+        puts '”'
+    else
+        puts "$apropos"
+    fi
+    last_apropos="$apropos"
 }
 
 man_link () {
@@ -89,6 +104,14 @@ extract_apropos () {
 
 puts () {
     printf %s "$1"
+}
+
+nbsps () {
+    local count=${1:-0}
+    while [ "$count" != 0 ]; do
+        puts '&nbsp;'
+        : $(( --count ))
+    done
 }
 
 #########
