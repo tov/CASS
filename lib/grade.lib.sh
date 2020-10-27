@@ -9,7 +9,8 @@ lf_char='
 del_char=$(printf '\x7F')
 tab_char=$(printf '\t')
 
-current_tag=0
+program_test_tag=0
+style_check_tag=0
 
 course_use docker find html points quote
 
@@ -129,15 +130,30 @@ do_later () {
 }
 
 skip_program_test () {
-    (( ++current_tag ))
+    : $(( ++program_test_tag ))
+}
+
+html_program_test () {
+    local numer; num=$1; shift
+    local denom; den=$1; shift
+    html_test_case $num $den "Test case $((program_test_tag++)): $@"
+}
+
+html_style_check () {
+    local num; num=$1; shift
+    local den; den=$1; shift
+    html_test_case $num $den "Style check $((style_check_tag++)): $@"
+}
+
+program_test_log_prefix () {
+    printf 'logs/%03d-%s' $program_test_tag "$1"
 }
 
 program_test () {
     local command;      command=$1; shift
     local realcmd;      realcmd=$command
-    local tag;          tag=$(( current_tag++ ))
     local casename;     casename=$(echo "$command" | sed 's%[/ ]%@%g')
-    local prefix;       prefix=$(printf 'logs/%03d-%s' $tag "$casename")
+    local prefix;       prefix=$(program_test_log_prefix "$casename")
     local docker_opts;  docker_opts=
 
     local check_sh;     check_sh=$prefix.check.sh
@@ -232,8 +248,8 @@ program_test () {
 
     . "$check_sh" > "$check_out"
 
-    html_test_case $(captured_actual) $(captured_possible) \
-        "Test case $tag: $(print_filename "./$command")"
+    html_program_test $(captured_actual) $(captured_possible) \
+        "$(print_filename "./$command")"
 
     if [ -f "$message" ]; then
         html_p "$(cat "$message")"
@@ -468,8 +484,8 @@ assert_repeated_magic_int_absence () {
     local magic_ints
     magic_ints=$(extract_repeated_int_literals "$@")
 
-    html_test_case $(points_if [ -z "$magic_ints" ]) $points \
-        'Checking for repeated magic <code>int</code> literals'
+    html_style_check $(points_if [ -z "$magic_ints" ]) $points \
+        "Repeated magic <code>int</code> literals"
     html_p Unnamed literal constants \(“magic numbers”\) make your \
         code harder to understand and harder to change. Repeating the \
         same magic number in more than one place is especially bad. \
@@ -533,8 +549,8 @@ assert_pattern_absence () {
     local FILE;     FILE=$(print_conj_with print_filename "$@")
     local FILEBASE; FILEBASE=$(print_conj_with print_filename_base "$@")
 
-    html_test_case $(points_if $success) $points \
-        "Checking for $TYPE $THING in $FILEBASE"
+    html_style_check $(points_if $success) $points \
+        "$TYPE $THING in $FILEBASE"
     html_p "$(eval "echo \"$explanation\"")"
 
     if ! $success; then
@@ -557,7 +573,7 @@ assert_function_absence () {
     local_get_points
     local funname; funname=$1; shift
 
-    assert_pattern_absence 'calls to function' "<var>$funname</var>" \
+    assert_pattern_absence 'Calls to function' "<var>$funname</var>" \
         "\\b$funname *[(]" \
         File\$FILE_PL \$FILE should not contain code that calls function \
         \$THING directly. \
@@ -568,7 +584,7 @@ _warning_pat='^[^ ]*: (warning|note): '
 assert_warning_absence () {
     local_get_points
 
-    assert_pattern_absence compilation warnings \
+    assert_pattern_absence Compilation warnings \
         "$_warning_pat" \
         There should not be any warnings when compiling your code. \
         -- "$@"
@@ -579,7 +595,7 @@ assert_mention_absence () {
     local thingname; thingname=$1; shift
     local pattern; pattern=$1; shift
 
-    assert_pattern_absence 'mentions of' "$thingname" \
+    assert_pattern_absence 'Mentions of' "$thingname" \
         "$pattern" "$@"
 }
 
@@ -587,7 +603,7 @@ assert_constant_absence () {
     local_get_points
     local constval; constval=$1; shift
 
-    assert_pattern_absence literal "<var>$constval</var>" \
+    assert_pattern_absence Literal "<var>$constval</var>" \
         "\\b$constval\\b" \
         Magic numbers like \$THING shouldn’t appear directly in your \
         code because they make it less portable, harder to \
