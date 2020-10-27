@@ -543,6 +543,14 @@ unindent () {
     } | expand | ubsed -E "s/^${indent}//;$1"
 }
 
+pluralize () {
+    if [ "$1" = 1 ]; then
+        printf %s "$2"
+    else
+        printf %s "${3-${2}s}"
+    fi
+}
+
 short_prog_name () {
     local full; full=${1-$0}
     local base; base=${full##*/}
