@@ -67,24 +67,30 @@ html_try_close_test_case () {
 html_test_case () {
     html_try_close_test_case
 
-    local outcome
-    local attr
+    local outcome_class
+    local detail_attr
     if [ "$1" = "$2" ]; then
-        outcome=passed
-        attr=
+        detail_attr=
+        outcome_class=passed
     else
-        outcome=failed
-        attr='open="open"'
+        detail_attr='open="open"'
+        outcome_class=failed
     fi
 
-
-    printf '<details class="test-case" %s>\n' "$attr"
+    printf '<details class="test-case" %s>\n' "$detail_attr"
     printf '<summary>'
     textf '=====\n'
     textf '===== '
 
-    printf '<h3 class="%s">' "$outcome"
-    printf '<span>(<em>%s</em> / <em>%s</em>)</span> ' "$1" "$2"
+    printf '<h3 class="%s">' "$outcome_class"
+    if [ "$2" = 0 ]; then
+        printf '<span>(<em>not for points</em>)</span>' "$1" "$2"
+    elif [ -n "$NO_POINTS_MODE" ]; then
+        printf '<span>(<em>early run</em>)</span>'
+    else
+        printf '<span>(<em>%s</em> / <em>%s</em>)</span> ' "$1" "$2"
+    fi
+    textf ' '
     printf '%s' "$3"
     printf '</h3>\n'
 
@@ -104,34 +110,26 @@ html_errorhead () {
     printf '<h4 class="error">%s</h4>\n\n' "$*"
 }
 
-html_test_result_no_points () {
-    printf '<h4 class="test-result %s"><strong><span class="txt-only">%s </span>%s</strong></h4>\n\n' "$1" "$2" "$3"
-}
+test_result_points_tmpl='<strong><span class="txt-only">%s </span>%s</strong> (%s / %s %s)</h4>\\n\\n'
+test_result_no_points_tmpl='<h4 class="test-result %s"><strong><span class="txt-only">%s </span>%s</strong></h4>\\n\\n'
 
-html_test_result_with_points () {
-    if [ "$5" = 1 ]; then
-        printf "$test_result_tmpl1" "$1" "$2" "$3" "$4" "$5"
-    else
-        printf "$test_result_tmplN" "$1" "$2" "$3" "$4" "$5"
+print_html_test_result () {
+    printf '<h4 class="test-result %s">' "$1"
+    printf '<strong><span class="txt-only">%s </span>%s</strong>' "$2" "$3"
+
+    if [ -z "$NO_POINTS_MODE" ] && [ "$5" -gt 0 ]; then
+        printf ' (%s / %s %s)' "$4" "$5" "$(pluralize "$5" point)"
     fi
+
+    printf '</h4>\n\n'
 }
-
-test_result_tmpl_tmpl='<h4 class="test-result %%s"><strong><span class="txt-only">%%s </span>%%s</strong> (%%s / %%s %s)</h4>\\n\\n'
-test_result_tmpl1=$(printf "$test_result_tmpl_tmpl" point)
-test_result_tmplN=$(printf "$test_result_tmpl_tmpl" points)
-
-if [ -n "$NO_POINTS_MODE" ]; then
-    alias html_test_result=html_test_result_no_points
-else
-    alias html_test_result=html_test_result_with_points
-fi
 
 html_test_passed () {
-    html_test_result passed +++ Passed "$1" "$1"
+    print_html_test_result passed +++ Passed "$1" "$1"
 }
 
 html_test_failed () {
-    html_test_result failed --- Failed 0 "$1"
+    print_html_test_result failed --- Failed 0 "$1"
 }
 
 html_io_lines () {
