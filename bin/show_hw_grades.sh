@@ -16,6 +16,7 @@ usage () {
        ,  -n    show full names
        ,  -r    sorted by score, descending
        ,  -s    sorted by score
+       ,  -x    shell trace
        ,  -2    don't dedup partners
        ,  -h    print this help message
 
@@ -30,11 +31,15 @@ usage () {
 }
 
 process_arguments () {
-    eval "$(getargs -Pandsr2h hw_set ...)"
+    eval "$(getargs -Pandsrx2h hw_set ...)"
 
     if [ -n "$flag_h" ]; then
         usage
         exit
+    fi
+
+    if [ -n "$flag_x" ]; then
+        set -x
     fi
 
     if [ -n "$flag_d" -a -n "$netids" ]; then
@@ -170,7 +175,9 @@ print_score () {
 }
 
 team_info () {
-    format_list 'full_name -' 'printf ,\x20' $(gsc_partners $hw $1)
+    PROPSTYLE=SHORT \
+        format_list full_name 'printf ,\x20' \
+        $(gsc_partners $hw $1)
 }
 
 select_netids () {
@@ -180,7 +187,7 @@ select_netids () {
             find_student -q1 "$netid"
         done
     else
-        all_netids
+        all_netids | grep -v '^teststudent$'
     fi
 }
 

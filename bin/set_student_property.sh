@@ -9,7 +9,7 @@ if [ -n "$flag_r" ]; then
 fi
 
 if [ -n "$flag_c" ]; then
-    mkdir -p "$COURSE_DB"/students/$netid
+    mkdir -p "$COURSE_ROSTER"/$netid
 fi
 
-printf '%s\n' "$value" > "$COURSE_DB"/students/$netid/$propname
+printf %s "$value" > "$COURSE_ROSTER"/$netid/$propname

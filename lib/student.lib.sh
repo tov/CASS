@@ -1,8 +1,161 @@
 # Library for printing out student info
 
+alias puts='printf %s'
+
+###
+### PROPERTY GETTERS
+###
+
+first () {
+    get_student_property "$1" first
+}
+
+last () {
+    get_student_property "$1" last
+}
+
+email () {
+    get_student_property "$1" email
+}
+
+call_me () {
+    get_student_property "$1" call-me
+}
+
+canvasid () {
+    get_student_property "$1" canvasid
+}
+
+githubid () {
+    get_student_property "$1" githubid
+}
+
+
+###
+### PROPERTY LOOKUP HELPERS
+###
+
+# $1 – netid
+# $2 – propname
+# ENV[PROPSTYLE] ::= SHORT | ''
+# ENV[ERRSTYLE]  ::= NAME | ''
+# ENV[ERRCODE]   ::= int | ''
+get_student_property () {
+    local netid=${1:?need NETID} || return 10
+    local propname=${2:?need PROPNAME} || return 10
+
+    local userpath="$(get_student_property_dir "$netid")" ||
+        return ${ERRCODE-1}
+
+    local filepath="$userpath"/$propname
+
+    if ! [ -e "$filepath" ]; then
+        no_such_property_message $netid $propname >&2
+        return ${ERRSTYLE-2}
+    fi
+
+    format_property_value "$filepath"
+}
+
+get_student_property_dir () {
+    local userpath="$COURSE_ROSTER"/$1
+
+    if ! [ -e "$userpath" ]; then
+        no_such_student_message $netid >&2
+        return 1
+    fi
+
+    puts "$userpath"
+}
+
+format_property_value () {
+    if [ "${PROPSTYLE-}" != SHORT ]; then
+        cat "$1"
+    else
+        set -- $(head -1 "$1") || return
+        puts "${1-}"
+    fi
+}
+
+no_such_student_message () {
+    printf "$(no_such_student_message_format)" "$@"
+}
+
+no_such_property_message () {
+    printf "$(no_such_property_message_format)" "$@"
+}
+
+no_such_student_message_format () {
+    case ${ERRSTYLE-} in
+        (NAME) puts %s ;;
+        (*)    puts 'no such student: %s\n' ;;
+    esac
+}
+
+no_such_property_message_format () {
+    case ${ERRSTYLE-} in
+        (NAME) puts %s.%s ;;
+        (*)    puts '%s: no such property: %s\n' ;;
+    esac
+}
+
+###
+### SYNTHETIC PROPERTIES
+###
+
+synth_prop () {
+    local netid=${1:?need NETID} || return 10
+    local propname=${2:?need PROPNAME} || return 10
+    shift; shift
+
+    get_student_property_dir $netid 1>/dev/null ||
+        return ${ERRCODE-1}
+
+    ERRSTYLE=NAME ERRCODE=0 eval printf "$@"
+}
+
+full_name () {
+    synth_prop "$1" full_name \
+        '"%s %s" "$(first '"$1"')" "$(last '"$1"')"'
+}
+
+full_called () {
+    synth_prop "$1" full_called \
+        '"%s %s" "$(called '"$1"')" "$(short_last '"$1"')"'
+}
+
+called () {
+    call_me "$1" 2>/dev/null ||
+        "${2:-short_first}" "$1"
+}
+
+short_first () {
+    PROPSTYLE=${PROPSTYLE-SHORT} first "$1"
+}
+
+short_last () {
+    PROPSTYLE=${PROPSTYLE-SHORT} last "$1"
+}
+
+email_list () {
+    format_list email 'printf \x20' "$@"
+}
+
+greeting_list () {
+    format_list called _sep_comma_and "$@"
+}
+
+format_to_line () {
+    format_list format_address 'printf ,\x20' "$@"
+}
+
+format_address () {
+    printf '"%s" <%s>' "$(full_name "$1")" "$(email "$1")"
+}
+
 format_list () {
-    local each;    each=$1; shift
-    local between; between=$1; shift
+    local each;    each="$1"; shift
+    local between; between="$1"; shift
     local argc0;   argc0=$#
     while [ $# -gt 1 ]; do
         $each "$1"
@@ -12,87 +165,18 @@ format_list () {
     $each "$1"
 }
 
-sep_comma_and () {
-    if [ "$ARGC0" = 2 ]; then
-        printf ' and '
-    elif [ "$ARGC" = 1 ]; then
-        printf ', and '
-    else
-        printf ', '
-    fi
+_sep_comma_and () {
+    case $ARGC0,$ARGC in
+        (2,*) printf ' and ' ;;
+        (*,1) printf ', and ' ;;
+        (*)   printf ', ' ;;
+    esac
 }
 
-print_student_property_short () {
-    local value; value=$(print_student_property $1 "$2")
-    printf %s "${value%% *}"
-}
 
-get_student_property () {
-    if [ $# = 2 ]; then
-        print_student_property $1 "$2"
-    elif [ "$1" = - ]; then
-        print_student_property_short "$2" "$3"
-    elif [ "$2" = - ]; then
-        print_student_property $1 "$3"
-    elif [ "$3" = - ]; then
-        print_student_property $1 "$2"
-    else
-        print_student_property $1 "$2"
-    fi
-}
-
-get_student_property_long () {
-    [ "$1" != - ] || shift
-    print_student_property $1 $2
-}
-
-first () {
-    get_student_property "$@" first
-}
-
-last () {
-    get_student_property "$@" last
-}
-
-email () {
-    get_student_property_long "$@" email
-}
-
-call_me () {
-    get_student_property_long "$@" call-me
-}
-
-canvasid () {
-    get_student_property_long "$@" canvasid
-}
-
-githubid () {
-    get_student_property_long "$@" githubid
-}
-
-called () {
-    call_me $1 2>/dev/null || first - $1
-}
-
-full_name () {
-    printf '%s %s' "$(first "$@")" "$(last "$@")"
-}
-
-format_address () {
-    printf '"%s" <%s>' "$(full_name "$@")" "$(email "$@")"
-}
-
-email_list () {
-    format_list email 'printf \x20' "$@"
-}
-
-greeting_list () {
-    format_list called sep_comma_and "$@"
-}
-
-format_to_line () {
-    format_list format_address 'printf ,\x20' "$@"
-}
+###
+### SEARCHING
+###
 
 find_student_by_name () {
     eval "$(getargs + last first)"

@@ -26,6 +26,6 @@ for netid in $(cat $netids); do
         s/{SUBJECT}/$subject/g;
         s/{EMAIL}/$(email $netid)/g;
         s/{NAME}/$(name $netid)/g;
-        s/{FIRST}/$(first - $netid)/g;
+        s/{FIRST}/$(short_first $netid)/g;
     " $template
 done

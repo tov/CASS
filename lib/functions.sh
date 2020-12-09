@@ -58,13 +58,15 @@ course_init_env () {
     COURSE_ETC=$COURSE_PRIVATE/etc
     COURSE_LIB=$COURSE_PRIVATE/lib
     COURSE_VAR=$COURSE_PRIVATE/var
-    COURSE_DB="$COURSE_VAR/db"
+    COURSE_DB=$COURSE_VAR/db
+    COURSE_ROSTER=$COURSE_DB/students
 
     export COURSE_BIN
     export COURSE_DB
     export COURSE_ETC
     export COURSE_LIB
     export COURSE_PRIVATE
+    export COURSE_ROSTER
     export COURSE_VAR
 
     . "$COURSE_ETC/config.sh"
@@ -309,13 +311,12 @@ team_members () {
 }
 
 all_netids () (
-    cd "$COURSE_DB/students"
+    cd "$COURSE_ROSTER"
     ls
 )
 
 netid_exists () {
-    test -n "$1" &&
-        test -d "$COURSE_DB/students/$1"
+    test -n "$1" -a -d "$COURSE_ROSTER/$1"
 }
 
 find_single () {
@@ -342,7 +343,7 @@ find_netid () {
 }
 
 find_netids_by_info () {
-    egrep -il "$1" "$COURSE_DB"/students/*/* |
+    egrep -il "$1" "$COURSE_ROSTER"/*/* |
             sed 's@.*/students/@@;s@/.*@@' |
             sort |
             uniq
@@ -428,7 +429,16 @@ resolve_student () {
 }
 
 print_student_property () {
-    cat "$COURSE_DB"/students/$1/$2 | tr -d '\n'
+    if cat "$COURSE_ROSTER"/$1/$2 2>/dev/null; then
+        return
+    fi
+
+    if [ $# -ge 3 ]; then
+        printf "$3" "$1" "$2"
+        return
+    fi
+
+    cass_error 82 "no such student property: $1.$2" || return
 }
 
 print_student_info () {
@@ -635,3 +645,25 @@ else
     }
 fi
 
+bsd_stat_mtime_seconds () {
+    "${STAT_BIN:-stat}" -f %m "$@"
+}
+
+gnu_stat_mtime_seconds () {
+    "${STAT_BIN:-stat}" --format=%Y "$@"
+}
+
+no_good_stat_mtime_seconds () {
+    cass_error 80 'Could not find suitable stat(1)'
+}
+
+if gnu_stat_mtime_seconds . >/dev/null 2>&1; then
+    alias stat_mtime_seconds=gnu_stat_mtime_seconds
+elif bsd_stat_mtime_seconds . >/dev/null 2>&1; then
+    alias stat_mtime_seconds=bsd_stat_mtime_seconds
+elif STAT_BIN=gstat gnu_stat_mtime_seconds . >/dev/null 2>&1; then
+    export STAT_BIN=gstat
+    alias stat_mtime_seconds=gnu_stat_mtime_seconds
+else
+    alias stat_mtime_seconds=no_good_stat_mtime_seconds
+fi
