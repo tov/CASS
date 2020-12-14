@@ -98,40 +98,6 @@ expand_comparison () {
     '
 }
 
-expand_hw_set () {
-    local n
-    local m
-    local rest; rest="${1-}."
-
-    while [ "$rest" != . ]; do
-        n=$(expr "$rest" : '\(.\)')
-
-        case $rest in
-            ([0-9]-[0-9]*)
-                m=$(expr "$rest" : '..\(.\)')
-                while [ $n -le $m ]; do
-                    echo $n
-                    : $(( ++n ))
-                done
-                rest="$(expr "$rest" : '...\(.*\)')"
-                ;;
-
-            ([0-9]*)
-                echo $n
-                rest="$(expr "$rest" : '.\(.*\)')"
-                ;;
-
-            (\ *)
-                rest="$(expr "$rest" : '.\(.*\)')"
-                ;;
-
-            (*)
-                cass_error 10 "bad HW spec: $1"
-                ;;
-        esac
-    done | sort -n | uniq | tr '\n' ' ' | sed 's/ $//'
-}
-
 define_include_score () {
     eval "
         include_score () {

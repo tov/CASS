@@ -41,3 +41,34 @@ netid_is_special () {
         *) false;;
     esac
 }
+
+expand_hw_set () (
+    for piece in $(printf %s "$*" | tr , ' '); do
+        case $piece in
+            (*-*-*)
+                cass_error 10 "bad HW spec: $piece"
+                ;;
+
+            (?*-?*)
+                n=${piece%-*}
+                m=${piece#*-}
+
+                while [ $n -le $m ]; do
+                    echo $((n++))
+                done
+                ;;
+
+            (*-*)
+                cass_error 10 "bad HW spec: $piece"
+                ;;
+
+            ([0-9]*)
+                echo $piece
+                ;;
+
+            (*)
+                cass_error 10 "bad HW spec: $1"
+                ;;
+        esac
+    done | sort -n | uniq | tr '\n' ' ' | sed 's/ $//'
+)
