@@ -535,6 +535,11 @@ get_line_indent () {
 }
 
 unindent () {
+    if [ "${1-}" = . ]; then
+        sed -E 's/^[[:space:]]*[.]?//'
+        return
+    fi
+
     local line
     local indent
 
