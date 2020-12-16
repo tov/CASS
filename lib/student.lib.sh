@@ -7,27 +7,27 @@ alias puts='printf %s'
 ###
 
 first () {
-    get_student_property "$1" first
+    get_student_property "$1" first -name
 }
 
 last () {
-    get_student_property "$1" last
+    get_student_property "$1" last -name
 }
 
 email () {
-    get_student_property "$1" email
+    get_student_property "$1" email -email
 }
 
 call_me () {
-    get_student_property "$1" call-me
+    get_student_property "$1" call-me -name
 }
 
 canvasid () {
-    get_student_property "$1" canvasid
+    get_student_property "$1" canvasid -id
 }
 
 githubid () {
-    get_student_property "$1" githubid
+    get_student_property "$1" githubid -id
 }
 
 
@@ -37,9 +37,9 @@ githubid () {
 
 # $1 – netid
 # $2 – propname
-# ENV[PROPSTYLE] ::= SHORT | ''
-# ENV[ERRSTYLE]  ::= NAME | ''
-# ENV[ERRCODE]   ::= int | ''
+# ENV[PROPSTYLE] ::= [FULL] | SHORT
+# ENV[ERRSTYLE]  ::= [MESSAGE] | NAME | BLANK | {format-string}
+# ENV[ERRCODE]   ::= [1] | int
 get_student_property () {
     local netid=${1:?need NETID} || return 10
     local propname=${2:?need PROPNAME} || return 10
@@ -51,10 +51,27 @@ get_student_property () {
 
     if ! [ -e "$filepath" ]; then
         no_such_property_message $netid $propname >&2
-        return ${ERRSTYLE-2}
+        return ${ERRCODE-2}
     fi
 
-    format_property_value "$filepath"
+    style_prop_value "${PROPSTYLE:-FULL},${3-}" \
+        cat "$filepath"
+}
+
+style_prop_value () {
+    local prop_style=$1; shift
+    case $prop_style in
+        (SHORT,-name)
+            "$@" | sed -E 's/[[:space:]].*//; q' | tr -d '\n'
+            ;;
+        (SHORT,-email)
+            "$@" |
+                sed -E 's|[.]northwestern[.]edu$||' | tr -d '\n'
+            ;;
+        (*)
+            "$@"
+            ;;
+    esac
 }
 
 get_student_property_dir () {
@@ -68,15 +85,6 @@ get_student_property_dir () {
     puts "$userpath"
 }
 
-format_property_value () {
-    if [ "${PROPSTYLE-}" != SHORT ]; then
-        cat "$1"
-    else
-        set -- $(head -1 "$1") || return
-        puts "${1-}"
-    fi
-}
-
 no_such_student_message () {
     printf "$(no_such_student_message_format)" "$@"
 }
@@ -86,16 +94,20 @@ no_such_property_message () {
 }
 
 no_such_student_message_format () {
-    case ${ERRSTYLE-} in
-        (NAME) puts %s ;;
-        (*)    puts 'no such student: %s\n' ;;
+    case ${ERRSTYLE:-MESSAGE} in
+        (BLANK)   ;;
+        (MESSAGE) puts 'no such student: %s\n';;
+        (NAME)    puts %s;;
+        (*)       puts ${ERRSTYLE};;
     esac
 }
 
 no_such_property_message_format () {
-    case ${ERRSTYLE-} in
-        (NAME) puts %s.%s ;;
-        (*)    puts '%s: no such property: %s\n' ;;
+    case ${ERRSTYLE:-MESSAGE} in
+        (BLANK)   ;;
+        (MESSAGE) puts '%s: no such property: %s\n';;
+        (NAME)    puts %s.%s;;
+        (*)       puts ${ERRSTYLE};;
     esac
 }
 
@@ -130,15 +142,15 @@ called () {
 }
 
 short_first () {
-    PROPSTYLE=${PROPSTYLE-SHORT} first "$1"
+    PROPSTYLE=SHORT first "$1"
 }
 
 short_last () {
-    PROPSTYLE=${PROPSTYLE-SHORT} last "$1"
+    PROPSTYLE=SHORT last "$1"
 }
 
 email_list () {
-    format_list email 'printf \x20' "$@"
+    format_list email _put_space "$@"
 }
 
 greeting_list () {
@@ -146,7 +158,7 @@ greeting_list () {
 }
 
 format_to_line () {
-    format_list format_address _sep_comma_space "$@"
+    format_list format_address '_put_comma _put_space' "$@"
 }
 
 format_address () {
@@ -165,8 +177,21 @@ format_list () {
     $each "$1"
 }
 
-_sep_comma_space () {
-    printf ', '
+_put_then () {
+    printf "$1"; shift
+    "$@"
+}
+
+_put_comma () {
+    _put_then , "$@"
+}
+
+_put_semi () {
+    _put_then \; "$@"
+}
+
+_put_space () {
+    _put_then ' ' "$@"
 }
 
 _sep_comma_and () {
