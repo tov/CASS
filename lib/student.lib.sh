@@ -171,8 +171,8 @@ _sep_comma_space () {
 
 _sep_comma_and () {
     case $ARGC0,$ARGC in
-        (2,*) printf ' and ' ;;
-        (*,1) printf ', and ' ;;
+        (2,*) printf ' %s ' "${AND_SYMBOL:-and}" ;;
+        (*,1) printf ', %s ' "${AND_SYMBOL:-and}" ;;
         (*)   printf ', ' ;;
     esac
 }
