@@ -146,7 +146,7 @@ greeting_list () {
 }
 
 format_to_line () {
-    format_list format_address 'printf ,\x20' "$@"
+    format_list format_address _sep_comma_space "$@"
 }
 
 format_address () {
@@ -165,6 +165,10 @@ format_list () {
     $each "$1"
 }
 
+_sep_comma_space () {
+    printf ', '
+}
+
 _sep_comma_and () {
     case $ARGC0,$ARGC in
         (2,*) printf ' and ' ;;
@@ -172,7 +176,6 @@ _sep_comma_and () {
         (*)   printf ', ' ;;
     esac
 }
-
 
 ###
 ### SEARCHING
