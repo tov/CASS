@@ -9,7 +9,7 @@ course_use () {
     local each
     for each; do
         case "$course_used_vars" in
-            *:$each:*) continue ;;
+            *:$each:*) continue
         esac
 
         if [ -f "$COURSE_LIB/$each.lib.sh" ]; then
@@ -113,24 +113,23 @@ bc_cond () {
 }
 
 assert () {
-    local code
-    local msg
+    local code= desc='assertion failed:'
 
-    case "$1" in
-        -*)
-            code=${1#-}; shift
-            ;;
-        *)
-            code=1
-            ;;
-    esac
+    while [ $# -gt 1 ]; do
+        case $1 in
+            (-[0-9]*) code=${1#-};;
+            (\[|\!)   break;;
+            (--)      shift; break;;
+            (-?)      set -- test "$@"; break;;
+            (*)       desc="$desc $1";;
+        esac
+        shift
+    done
 
-    msg=$1; shift
-
-    if ! "$@"; then
-        echo >&4 "$msg"
+    "$@" || {
+        echo >&4 "$desc"
         return $code
-    fi
+    }
 }
 
 find_single () {
@@ -206,7 +205,7 @@ getargs () (
         echo '      for actual_given_flag in $(explode_words ${1#-}); do'
         echo '        case "$actual_given_flag" in'
         for flag in $exploded; do
-            echo "          $flag) flag_$flag=-$flag ;;"
+            echo "          $flag) flag_$flag=-$flag;;"
         done
         echo '          *)'
         BAIL '            ' 2 'Unknown flag: $1'
@@ -419,7 +418,7 @@ resolve_student () {
             echo "$2"
             ;;
         -R) # Check but don't search
-            assert "NetID doesn't exist: $2" netid_exists "$2" &&
+            assert -- netid_exists "$2" &&
             echo "$2"
             ;;
         *)  # Search
