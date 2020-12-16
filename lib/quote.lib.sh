@@ -1,5 +1,6 @@
 # Library for quoting text
 
+del_char="$(printf '\x7F')"
 shell_dq_chars='\\$!`"'
 shell_bs_chars='][[:space:]|&;()<>{}*?~'"'${shell_dq_chars}"
 
