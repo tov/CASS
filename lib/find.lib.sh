@@ -49,9 +49,12 @@ expand_hw_set () (
                 cass_error 10 "bad HW spec: $piece"
                 ;;
 
-            (?*-?*)
+            (*-*)
                 n=${piece%-*}
                 m=${piece#*-}
+
+                n=${n:-1}
+                m=${m:-${HW_COUNT?must be set to use open-ended HW range}}
 
                 while [ $n -le $m ]; do
                     echo $((n++))
