@@ -61,7 +61,7 @@ print_preset_json () {
         test $# = 0 || echo ,
     done
 
-    cat <<\....END
+    cat <<....END
                 ],
                 "transform": {
                     "flip_horizontal": false,
@@ -78,7 +78,7 @@ print_preset_json () {
             }
         ],
         "live": 1,
-        "name": "slides",
+        "name": "${pdf##*/}",
         "pip_mode": "free_pip",
         "version": 1
     }
