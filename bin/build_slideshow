@@ -1,0 +1,101 @@
+#!/bin/sh
+
+# Turns a PDF into a sequence of PNGs, and generates a playlist for
+# ManyCam.
+
+CAIRO_OPTIONS='-scale-to-x 1280 -scale-to-y 720 -png'
+
+set -eu
+. "$(dirname "$0")/.CASS"
+eval "$(getargs pdf outdir= outlist=)"
+
+stem=${pdf%.pdf}
+pdf=${stem}.pdf
+: ${outdir:=${pdf%.pdf}.d}
+: ${outlist:=${outdir%.d}.mcbox}
+
+main () {
+    tmpdir=
+    trap 'rm -Rf "$tmpdir"' EXIT
+    tmpdir="$(mktemp -dt make-slideshow)"
+
+    build_png_dir "$outdir" "$pdf"
+    build_preset_mcbox "$outlist" "$outdir"
+}
+
+build_png_dir () {
+    mkdir "$1"
+    pdftocairo $CAIRO_OPTIONS "$2" "$1"/slide
+}
+
+build_preset_mcbox () {
+    local json="$tmpdir"/preset.json
+    local zip="$tmpdir"/preset.zip
+
+    print_preset_json "$outdir"/* > "$json"
+
+    (
+        cd "$tmpdir"
+        zip preset.zip preset.json
+    )
+
+    mv "$zip" "$1"
+}
+
+print_preset_json () {
+    cat <<\....END
+    {
+        "index": 0,
+        "layers": [
+            {
+                "corner_radius": 0.0,
+                "height": 1.0,
+                "opacity": 100,
+                "pip_number": 0,
+                "sources": [
+....END
+
+    while [ $# != 0 ]; do
+        print_one_entry "$1"
+        shift
+        test $# = 0 || echo ,
+    done
+
+    cat <<\....END
+                ],
+                "transform": {
+                    "flip_horizontal": false,
+                    "flip_vertical": false,
+                    "rotation": "0",
+                    "scale": 1.0,
+                    "scale_behavior": "fit",
+                    "x": 0.5,
+                    "y": 0.5
+                },
+                "width": 1.0,
+                "x": 0.0,
+                "y": 0.0
+            }
+        ],
+        "live": 1,
+        "name": "slides",
+        "pip_mode": "free_pip",
+        "version": 1
+    }
+....END
+}
+
+print_one_entry () {
+    cat <<....END
+        {
+            "config": {
+                "path": "$(realpath "$1")"
+            },
+            "type": "image"
+        }
+....END
+}
+
+####
+main
+####
