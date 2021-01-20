@@ -11,14 +11,13 @@ gsc_partners () {
 
     gsc_partners_is_fresh $hw $netid || gsc_partners_refresh $hw
 
-    _gsc_partners_read_cache "$(gsc_partners_cache_path $hw $netid)"
+    _gsc_partners_read_cache "$(gsc_partners_cache_path $hw $netid)" ||
+        echo $netid
 }
 
 # $1: cache
 _gsc_partners_read_cache () {
-    if ! [ -e "$1" ]; then
-        echo DROPPED >"$1"
-    fi
+    test -e "$1" || return 1
 
     local netid
     for netid in $(cat "$1"); do
