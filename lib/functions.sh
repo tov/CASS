@@ -638,16 +638,30 @@ gdate () {
     $PCT_N_DATE "$@"
 }
 
-FMT_BIN=$(which fmt)
-if "$FMT_BIN" -sd '' </dev/null >/dev/null 2>&1; then
-    fmt () {
-        "$FMT_BIN" -sd '' "$@"
-    }
-else
-    fmt () {
-        "$FMT_BIN" "$@" | sed -E 's/([.!?] ) /\1/g'
-    }
-fi
+fmt () {
+    init_gnu_fmt gfmt fmt &&
+    fmt "$@"
+}
+
+FMT_BIN=
+init_gnu_fmt () {
+    local candidate
+    for candidate; do
+        if FMT_BIN="$(which $candidate)"
+        then
+            fmt () { "$FMT_BIN" "$@"; }
+            return
+        fi
+    done 2>/dev/null
+
+    cass_error 19 'could not find GNU fmt'
+}
+
+is_gnu_fmt () {
+    local version
+    version="$("$1" --version)" &&
+        expr x"$version" : '.*GNU'
+} >/dev/null 2>&1
 
 bsd_stat_mtime_seconds () {
     "${STAT_BIN:-stat}" -f %m "$@"
