@@ -702,6 +702,12 @@ elaborate_test_log () {
             s//POINTS_POSSIBLE=\1;/
             p
         }
+        $ {
+            /^([0-9.]+) *$/ {
+                s//UNIT_SCORE=\1;/
+                p
+            }
+        }
         d
     ' "$1"
 
