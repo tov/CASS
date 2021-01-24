@@ -59,6 +59,57 @@ link_rel_rec () {
     done
 }
 
+check_expected_files () {
+    if [ -e Makefile ] || [ -e CMakeLists.txt ]; then
+        return
+    fi
+
+    if [ "$1" = : ]; then
+        return
+    fi
+
+    case $((hw)) in
+        (1) check_file warmup.rkt ;;
+    esac
+}
+
+check_file () {
+    local src=.cache/src
+
+    if [ -f ${src}/$1 ]; then
+        return
+    fi
+
+    warn_missing_file $1
+
+    mkdir -p ${src}
+    rm -Rf .original
+    mv ${src} .original
+    mkdir ${src}
+
+    find .original -type f -name '*.rkt' -print0 |
+        xargs -0 cat > ${src}/$1
+}
+
+warn_missing_file () {
+    echo >&4 "*** warning: missing $1"
+
+    unindent . >>about.log <<-....EOF
+
+        ************************************************************
+        *** WARNING!
+        ***
+        *** File not found: $1
+        ***
+        *** This time I will try to find another file and rename
+        *** it for you, but you should be sure to use the correct
+        *** filename in future weeks.
+        ************************************************************
+
+....EOF
+}
+
+
 hw_base=$(find_homework $hw)
 
 mkdir -p "$dir"
@@ -69,6 +120,7 @@ publish_dir -G "$hw_base/starter/"    "$dir"
 publish_dir    "$COURSE_LIB/tester/"  "$dir/.tester/"
 publish_dir    "$hw_base/tester/"     "$dir/.tester/"
 "$@" .cache
+check_expected_files "$*"
 link_cache
 
 if [ -f "$hw_base/starter/Makefile" ]; then
