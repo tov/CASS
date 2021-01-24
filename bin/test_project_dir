@@ -6,13 +6,33 @@
 . "$(dirname "$0")/.CASS"
 course_use grade
 
-eval "$(getargs hw dir netid=)"
-cd "$dir"
+main () {
+    eval "$(getargs hw dir netid=)"
+    cd "$dir"
 
-test -n "$netid" || netid=$(basename "$(pwd)")
-container=$(format_homework $hw)-$netid-test-$$
-test_this=$(find_homework_script $hw test)
+    test -n "$netid" || netid=$(basename "$(pwd)")
 
-docker_start test "$container" --cpus=1
+    test_$(detect_language)_project
+}
 
-TEST_NETID=$netid TEST_HW=$hw $test_this
+test_c_project () {
+    container=$(format_homework $hw)-$netid-test-$$
+    test_this=$(find_homework_script $hw test)
+
+    docker_start test "$container" --cpus=1
+
+    TEST_NETID=$netid TEST_HW=$hw $test_this
+}
+
+test_cxx_project () {
+    test_c_project "$@"
+}
+
+test_dssl2_project () (
+    cd .tester
+    racket -tm tester.rkt tests.rkt
+)
+
+#########
+main "$@"
+#########
