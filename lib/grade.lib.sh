@@ -660,8 +660,10 @@ print_points_summary () {
 detect_language () {
     if [ -f CMakeLists.txt ]; then
         echo cxx
-    else
+    elif [ -f Makefile ]; then
         echo c
+    else
+        echo dssl2
     fi
 }
 
