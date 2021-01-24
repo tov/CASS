@@ -1,0 +1,425 @@
+#!/bin/sh
+
+exec 0<&-
+
+. "$(dirname "$0")/.CASS"
+course_use announce cmake grade publish
+
+# So that fuzz doesn't break programs that expect to decode UTF-8.
+LANG=C; export LANG
+
+# Shorten this.
+bin=$COURSE_BIN
+
+help () {
+    cat <<-····EOF
+	Clones (if necessary), builds, and grades a student/team repository.
+	
+	-A            don't set automated-test score (but do upload logs)
+	-B            skip building
+	-b            upload in background
+	-C            don't re-clone repo
+	-c            clean build products from previous run
+	-d            die on first failed test
+	-i            prepare local docker image
+	-g            grant automatic extensions
+	-h            print this help message
+	-N            no points mode (-N and -u implies -A)
+	-p            prepare and push docker image
+	-q            quiet
+	-R            don't re-resolve NetID
+	-u            upload results to server / save starter-tests
+	-T            don't actually run tests
+	-w            wipe out previous build
+	-x            shell trace
+
+····EOF
+}
+
+main () {
+    build_step=false
+    docker_step=false
+    test_step=false
+    extensions_step=false
+    upload_step=false
+
+    process_flags_set_variables "$@"
+
+    announce 'Starting %s...' $slug
+    grading_start=$(current_millis)
+
+    prepare_local_repo
+    configure_and_build
+    prepare_docker_image
+    run_tests
+    grant_extensions
+    upload_or_save
+
+    announce 'Finished %s: %s (%s).' \
+        $slug "$(summarize_result)" \
+        "$(elapsed_since $grading_start)"
+    msgf '\n'
+}
+
+summarize_result () {
+    if [ -n "$disposition" ]; then
+        echo "$disposition"
+        return
+    elif [ -f tests.log ]; then
+        eval $(elaborate_test_log + tests.log)
+    elif [ -f early.log ]; then
+        eval $(elaborate_test_log + early.log)
+    fi
+
+    if [ -n "$UNIT_SCORE" ]; then
+        printf '%.3g%%\n' "$(bc_expr "100 * $UNIT_SCORE")"
+    elif [ -n "$TOTAL_CHECKS" ]; then
+        printf '%d / %d' $CHECKS_PASSED $TOTAL_CHECKS
+    else
+        echo unknown
+    fi
+}
+
+process_flags_set_variables () {
+    if [ "$1" = -h ]; then
+        help
+        exit
+    fi
+
+    eval "$(getargs -ABbCcdghikNnqpRuTwx hw netid evals=)"
+
+    if [ -n "$flag_x" ]; then
+        set -x
+    fi
+
+    if [ -n "$flag_q" ]; then
+        go_quiet
+    fi
+
+    if [ -n "$evals" ]; then
+        flag_p=-p
+    fi
+
+    if [ -z "$flag_B" ]; then
+        build_step=true
+    fi
+
+    if [ -n "$flag_i$flag_p" ]; then
+        docker_step=true
+    fi
+
+    if [ -z "$flag_T" ]; then
+        test_step=true
+    fi
+
+    if [ -n "$flag_g" ]; then
+        extensions_step=true
+    fi
+
+    if [ -n "$flag_u$flag_A" ]; then
+        upload_step=true
+    fi
+
+    starter=false
+    solution=false
+    if [ "$netid" = starter ]; then
+        starter=true
+        docker_step=false
+        extensions_step=false
+    elif [ "$netid" = solution ]; then
+        solution=true
+        extensions_step=false
+    else
+        netid=$(resolve_student $flag_R $netid) || exit 2
+    fi
+
+    if [ -n "$flag_d" ]; then
+        DIE_ON_FAILED_TEST=1; export DIE_ON_FAILED_TEST
+    fi
+
+    if [ -n "$flag_N" ]; then
+        announce -Q "No points mode."
+        NO_POINTS_MODE=-no-points; export NO_POINTS_MODE
+        default_score=-
+        ! $upload_step || flag_A=-A
+    else
+        default_score=0.01
+    fi
+
+    hw_base=$(find_homework "$hw")
+    repo=$(find_team_repo "$hw" "$netid")
+    slug=$(format_homework "$hw")/$netid
+
+    log_dir=$(printf '%s/log/starter/%02d/%s' "$COURSE_VAR" $hw $(hostname))
+}
+
+main_log_name () {
+    if [ -n "$NO_POINTS_MODE" ]; then
+        echo early
+    else
+        echo tests
+    fi
+}
+
+you_submitted_the_starter () {
+    rm_log $(main_log_name)
+    fmt <<-····EOF | tee $(main_log_name).log >&2
+	Your code$1 is identical to the starter code$1,
+	so it looks like either you haven't submitted yet
+	or you submitted the starter code.
+	
+	$default_score
+····EOF
+}
+
+print_build_error () {
+    cat <<-\....EOF
+	<h4>Build Error</h4>
+
+	<p>I couldn't build your code for some reason, so I'm skipping
+	running the tests for now.</p>
+
+	<p>Here's your <code class="filename">build.log</code>:</p>
+
+....EOF
+
+    html_grep_output ' error: ' < build.log
+}
+
+generate_build_error () {
+    print_build_error | capture_test_results error >&2
+}
+
+configure_and_build () {
+    $build_step || return 0
+
+    doing "${1:-Building project}"
+
+    if build_project; then
+        rm_log error
+        did
+    else
+        docker_step=false
+        test_step=false
+        hilite generate_build_error
+        did 'build error'
+        disposition='build error'
+    fi
+}
+
+check_for_starter_code () {
+    generate_diff
+
+    ! $starter || return 0
+
+    if looks_like_starter; then
+        hilite you_submitted_the_starter
+        build_step=false
+        docker_step=false
+        test_step=false
+        disposition='starter'
+    fi
+}
+
+looks_like_starter () {
+    cmp -s "$log_dir"/repo.diff repo.diff
+}
+
+generate_diff () {
+    diff -qrx .\* "$hw_base/starter" . |
+        grep -v '^Only in ' >repo.diff ||
+        true
+}
+
+prepare_docker_image () {
+    $docker_step || return 0
+
+    if ! needs_docker_image; then
+        doing 'Preparing docker image'
+        did skipped
+        return
+    fi
+
+    "$bin"/prepare_docker_image \
+        $flag_b $flag_q $flag_p \
+        $hw $netid $evals >&3
+}
+
+needs_docker_image () {
+    test -e install.sh || return
+
+    local file
+    for file in $(find_cmake_programs); do
+        if [ -e build/"$file" ]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+host_make () {
+    local progs; progs=$(find_cmake_programs | tr '\n' ' ')
+    local tests; tests=$(find_cmake_test_programs | tr '\n' ' ')
+    if [ -n "$progs$tests" ]; then
+        set -- "$@" CMAKE_EXES="$tests $progs"
+    fi
+    hilite make -rf .tester/Host_test_makefile "$@" TEST_NETID=$netid
+}
+
+test_project () {
+    host_make "$1.log"
+}
+
+build_project () {
+    test -z "$flag_c" || rm -f build.log
+    host_make build.log BUILD_OPT=$flag_c
+}
+
+run_tests () {
+    $test_step || return 0
+
+    doing 'Testing project'
+
+    if [ -n "$NO_POINTS_MODE" ]; then
+        rm_log tests
+        test_project early
+        check_for_starter_output early
+
+        if needs_full_test; then
+            did 'complete; needs full test'
+            NO_POINTS_MODE=
+            configure_and_build 'Rebuilding project'
+            doing 'Retesting project'
+        else
+            did
+            return
+        fi
+    fi
+
+    rm_log early
+    test_project tests
+    check_for_starter_output tests
+
+    did
+}
+
+check_for_starter_output () {
+    local log_file
+    local starter_log
+    log_file=$1.log
+    starter_log=$log_dir/$log_file
+
+    if [ -f "$starter_log" ] && cmp -s "$starter_log" "$log_file";
+    then
+        if $starter; then
+            note 'starter output unchanged'
+        else
+            hilite you_submitted_the_starter "'s output"
+        fi
+    fi
+}
+
+rm_log () {
+    rm -f $1.log $1.hlog
+}
+
+prepare_local_repo () {
+    doing 'Updating project'
+
+    if [ -e "$repo"/.PIN ]; then
+        did PINNED
+        cd "$repo"
+        return
+    fi
+
+    if [ -z "$flag_w" ] && [ -n "$flag_C" ] && [ -d "$repo" ]; then
+        did skipped
+        cd "$repo"
+        return
+    fi
+
+    "$bin"/clone_student_project \
+        -ER $flag_x ${flag_w:+-f} $hw $netid ||
+        cass_fatal 10 "could not clone hw$hw for $netid"
+
+    if check_submission_exists; then
+        cd "$repo"
+        ### TODO XXX (false positives)
+        : check_for_starter_code
+    fi
+
+    did
+}
+
+check_submission_exists () {
+    if [ -d "$repo" ]; then
+        true
+    else
+        disposition='no submission'
+        build_step=false
+        docker_step=false
+        test_step=false
+        upload_step=false
+        false
+    fi
+}
+
+score_meets_goal () {
+    local score
+    local goal
+    score=$(get_hw_score $hw $netid || echo 0)
+    goal=$(get_hw_goal $hw $netid) || goal=
+    bc_cond "100 * ${score:-0} >= ${goal:-100}"
+}
+
+needs_full_test () {
+    test -n "$THRESHOLD" &&
+        test "$(get_checks_passed early.log)" -ge "$THRESHOLD"
+}
+
+get_checks_passed () {
+    eval "$(elaborate_test_log + "$1")"
+    echo "${CHECKS_PASSED:-0}"
+}
+
+grant_extensions () {
+    $extensions_step || return 0
+
+    rm -f extension.log
+    host_make extension.log GRANT_OPT=-U
+}
+
+post_grade () {
+    "$bin"/post_student_grade -R $flag_A $flag_x $hw $netid .
+}
+
+upload_or_save () {
+    $upload_step || return 0
+
+    if $starter; then
+        mkdir -p "$log_dir"
+        rsync --ignore-missing-args \
+            repo.diff early.log tests.log \
+            "$log_dir"
+        git -C "$log_dir" add -N .
+    elif [ -n "$flag_b" ]; then
+        doing 'Posting results'
+        bg_doing
+        (
+        sleep 1
+        post_grade
+        bg_did
+        ) | sed "s@^@($netid) @" &
+    else
+        doing 'Posting results'
+        post_grade
+        did
+    fi
+}
+
+###
+### MAIN
+###
+main "$@"
+

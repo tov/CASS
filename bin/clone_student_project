@@ -1,0 +1,145 @@
+#!/bin/sh
+
+# Clones a student/team repository.
+#
+# -E            remove repo if submission is empty
+# -P            don't symlink partner repo
+# -R            netid is already resolved
+# -f            force replace if already cloned
+# -x            shell trace
+
+. "$(dirname "$0")/.CASS"
+course_use find datetime
+
+main () {
+    process_options "$@"
+    create_repo
+    generate_ls_log
+    if assemble_repo; then
+        link_partners
+    fi
+}
+
+# Links the partner's repo to the repo.
+link_partners () {
+    local partner symlink
+
+    for partner in $partners; do
+        symlink="$(find_team_repo $hw $partner)"
+        rm -Rf "$symlink"
+        if [ "${repo%/*}" = "${symlink%/*}" ]; then
+            ln -s "${repo##*/}" "$symlink"
+        else
+            ln -s "$repo"       "$symlink"
+        fi
+    done
+}
+
+# Processes command-line options.
+process_options () {
+    eval "$(getargs -EPRfx hw netid repo=)"
+
+    if [ -n "$flag_x" ]; then
+        set -x
+    fi
+
+    hw_base=$(find_homework $hw)
+    partners=
+
+    if [ "$netid" = solution ]; then
+        copy_cmd="publish_dir $hw_base/solution/"
+    elif [ "$netid" = starter ]; then
+        copy_cmd=:
+        flag_E=
+    else
+        netid=$(resolve_student $flag_R $netid) || exit 2
+        if [ -z "$flag_P" ]; then
+            partners=$(gsc admin partners hw$hw $netid)
+            netid=${partners%% *}
+            partners=${partners#$netid}
+        fi
+        copy_cmd="gsc -qu $netid cp -af hw$hw:"
+    fi
+}
+
+# Sets $repo. Finds, possibly removes, and (re)creates it.
+create_repo () {
+    if [ -z "$repo" ]; then
+        repo="$(find_team_repo $hw $netid)"
+    fi
+
+    repo_name=${repo#$COURSE_VAR/grading/}
+
+    if [ -e "$repo" ] && [ -n "$flag_f" ]; then
+        echo "clone_student_project: replacing: $repo_name"
+        rm -Rf "$repo"
+    fi
+
+    mkdir -p "$repo"
+}
+
+# Unindents and rewraps lines.
+unindent_fmt () {
+    unindent | fmt -w 60
+}
+
+# When is the next run?
+when_next_run () {
+    case ${LATENCY-} in
+        ('')
+            echo "not yet scheduled"
+            ;;
+        (=*)
+            echo "${LATENCY#=}"
+            ;;
+        (*)
+            echo "scheduled for about $LATENCY from now"
+            ;;
+    esac
+}
+
+test_run_note () {
+    test -n "$NO_POINTS_MODE" || return 0
+
+    unindent_fmt <<....EOF
+        [NOTE: This is an early trial run, so not all tests cases
+        will be tried, and no grade will be assigned.]
+
+....EOF
+}
+
+# Records the output of `gsc ls`
+generate_ls_log () {
+    test_run_note
+
+    unindent_fmt <<....EOF
+        Greetings! I am the CS 211 homework testing script,
+        and the purpose of this log is to inform you of my
+        most recent run.
+
+        The time right now is $(human_datetime), and my next run is
+        $(when_next_run).
+
+        Here is a listing of your currently submitted files
+        that I am about to test:
+....EOF
+
+    echo
+    gsc -u $netid ls hw$hw: 2>/dev/null |
+        grep -v ' \[l\] ' || true
+} >"$repo"/about.log
+
+# Assembles the repository
+assemble_repo () {
+    "$COURSE_BIN"/assemble_student_project $hw "$repo" $copy_cmd
+
+    if [ -n "$flag_E" ] && dir_is_empty "$repo"/.cache; then
+        echo "clone_student_project: deleting empty: $repo_name"
+        rm -R "$repo"
+        return 1
+    fi
+}
+
+###########
+main "$@" #
+###########

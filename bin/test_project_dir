@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# Helper script for testing the student project in the current
+# directory.
+
+. "$(dirname "$0")/.CASS"
+course_use grade
+
+eval "$(getargs hw dir netid=)"
+cd "$dir"
+
+test -n "$netid" || netid=$(basename "$(pwd)")
+container=$(format_homework $hw)-$netid-test-$$
+test_this=$(find_homework_script $hw test)
+
+docker_start test "$container" --cpus=1
+
+TEST_NETID=$netid TEST_HW=$hw $test_this

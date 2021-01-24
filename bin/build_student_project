@@ -1,0 +1,100 @@
+#!/bin/sh
+
+# Builds a student/team repository
+#
+# -R          don't resolve netid
+# -c          clean build products from previous run
+
+. "$(dirname "$0")/.CASS"
+course_use find grade
+
+eval "$(getargs -Rc hw netid repo=)"
+netid=$(resolve_student ${flag_R:+-C} $netid)
+if [ -z "$repo" ]; then
+    repo=$(find_team_repo $hw $netid)
+fi
+container=$(format_homework $hw)-$netid-build-$$
+
+# Preparation script can override this:
+HOST_MAKE='make -rf .tester/Host_build_makefile'
+TEST_HW=$hw
+TEST_NETID=$netid
+export HOST_MAKE
+export TEST_HW
+export TEST_NETID
+
+guest () {
+    docker exec $CURRENT_BUILD_CONTAINER "$@"
+}
+
+c_contract () {
+    {
+        "$@" |
+        ubsed -E '
+            /^make\[[0-9]+\]: (Entering|Leaving) directory /d
+            /^ln /d
+            s| +-f[^ ]*||g
+            s| +-[DI][^ ]*| ${CPPFLAGS}|
+            s| +-[Ll][^ ]*| ${LDFLAGS}|
+            s| +-[gpsW][^ ]*| ${CFLAGS}|
+            s| +@[^ ]+||g
+            s| +-[^co][^ ]*||g
+        '
+    } 2>&1 | ubsed -E '
+        s|[^ ]*[.]tester|${TEST_DIR}|g
+        s|tester|${MY_TESTS}|g
+        s|docker exec .* cc |${CC} |g
+        s|docker exec .* c[+][+] |${CXX} |g
+    '
+}
+
+c_expand () {
+    sed '
+        s|^/hw/||
+        s|[$]{TEST_DIR}|.tester|g
+        s|[$]{MY_TESTS}|tester|g
+    ' "$1"
+}
+
+save_warnings () {
+    sed -E '
+        /^(.+):[0-9]+:[0-9]+: (warning|error): .*/! d
+        s//\1/
+    ' "$1" | sort | uniq > "$2"
+
+    if [ -z "$(cat "$2")" ]; then
+        rm -f "$2"
+    fi
+}
+
+restore_warnings () {
+    test -f "$1" || return 0
+
+    c_expand "$1" | while read _line; do
+        touch -c "$_line"
+    done
+}
+
+do_build () {
+    restore_warnings .warnings
+    c_contract $HOST_MAKE | tee build.log
+    save_warnings build.log .warnings
+}
+
+clean_build () {
+    test -n "$flag_c" || return 0
+
+    if [ -f CMakeLists.txt -a -d build ]; then
+        guest cmake --build build --target clean
+    elif [ -f Makefile ]; then
+        $HOST_MAKE clean
+    fi
+}
+
+cd "$repo"
+
+. $(find_homework_script $hw prepare)
+
+docker_start build "$container"
+clean_build
+do_build

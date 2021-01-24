@@ -1,0 +1,165 @@
+#!/bin/sh
+
+# Posts student grading results.
+#
+# -A            don't set automated-test score (but do upload logs)
+# -N            dry run -- don't actually upload
+# -O            skip contents of out/ directory
+# -R            don't resolve NetID
+# -x            enable shell tracings
+
+set -o pipefail
+
+. "$(dirname "$0")/.CASS"
+course_use dry_run find grade
+
+process_arguments () {
+    eval "$(getargs -ANORx ...)"
+
+    if [ -n "$flag_x" ]; then
+        set -x
+    fi
+
+    dry_run_if test -n "$flag_N"
+
+    case $# in
+        3)
+            hw=$1
+            netid=$(resolve_student $flag_R $2)
+            dir=$3
+            ;;
+
+        2)
+            hw=$1
+            netid=$(resolve_student $flag_R $2)
+            dir=$(find_team_repo $hw $netid)
+            ;;
+
+        1)
+            dir=${1%tests.log}
+            if [ ! -d "$dir" ]; then
+                echo >&2 "$0: not a directory: $dir"
+                exit 2
+            fi
+
+            case "$dir" in
+                [/~]*)
+                    ;;
+                *)
+                    dir="$(pwd)/$dir"
+                    ;;
+            esac
+
+            netid=$(basename "$dir")
+            hw=$(basename "$(dirname "$dir")")
+            hw=${hw#hw}
+            ;;
+
+        *)
+            echo >&2 "Usage: $0 HW NETID [DIR]"
+            echo >&2 "Usage: $0 DIR"
+            exit 1
+            ;;
+    esac
+}
+
+gsc_rm () {
+    _N gsc -qqu $netid rm "$@" || true
+}
+
+gsc_up () {
+    _N gsc -vu $netid cp "$@" hw$hw:
+}
+
+gsc_auto () {
+    _N gsc admin -v set_auto hw$hw $netid "$1" '' 2>&1
+}
+
+alias upload='set -- "$@"'
+
+do_it () {
+
+    gsc_rm hw$hw:\*.log hw$hw:\*.hlog
+
+    for file in *; do
+        case "$file" in
+            early.hlog)
+                test -f tests.hlog ||
+                    upload "$file"
+                ;;
+            early.log)
+                test -f early.hlog ||
+                test -f tests.hlog ||
+                test -f tests.log  ||
+                    upload "$file"
+                ;;
+            *.hlog)
+                upload "$file"
+                ;;
+            *.log)
+                test -f "${file%.log}.hlog" ||
+                    upload "$file"
+                ;;
+            *)
+                : Pass.
+                ;;
+        esac
+    done
+
+    if [ -z "$flag_O" ] && ! dir_is_empty out; then
+        upload out/*
+    fi
+
+    gsc_up "$@"
+
+    if [ -n "$flag_A" ]; then
+        return
+    fi
+
+    if score=$(get_hw_score $hw $netid); then
+        gsc_auto "$score"
+    fi
+}
+
+CHECK_THESE='Check out these other logs to see my results:'
+update_about () {
+    if [ -f about.log ] && ! grep -Fsq "$CHECK_THESE" about.log
+    then
+        generate_log_legend | fmt -w 72 >>about.log
+    fi
+}
+
+generate_log_legend () {
+    echo "$CHECK_THESE"
+    echo
+    describe_log build.log shows the output from building your code
+    describe_log error.log shows errors that have prevented me from \
+        testing your code
+    describe_log early.hlog shows your test results from this early trial run
+    describe_log tests.hlog shows your results from this test run
+    describe_log extension.log shows whether you were granted an \
+        automatic extension based on your current score
+}
+
+describe_log () {
+    if [ -f "$1" ]; then
+        echo " • $*."
+        echo
+    fi
+}
+
+#####
+##### Go!
+#####
+
+process_arguments "$@"
+
+log=$dir/.upload.log
+tmplog=$(mktemp "$log.XXXXXX")
+
+cd "$dir"
+update_about
+do_it 2>&1 | tee "$tmplog"
+
+_N mv "$tmplog" "$log"
+rm -f "$tmplog"

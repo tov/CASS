@@ -1,0 +1,90 @@
+#!/bin/sh
+
+# Grades all repos for a given assignment.
+
+# -B            don't upload in background
+# -N            no points mode
+# -S            don't regrade the starter (basis) code
+# -U            don't upload anything
+# -c            continue from where it stopped last time
+# -g            grant automatic extensions
+# -q            quiet
+
+. "$(dirname "$0")/.CASS"
+
+eval "$(getargs -BNSUcgq hw evals= grade_project_flags...)"
+
+continue=$COURSE_VAR/.$hw-continue
+
+if expr X"$evals" : X- >/dev/null; then
+    grade_project_flags="$evals $grade_project_flags"
+    evals=
+fi
+
+if [ -z "$flag_B" ]; then
+    flag_b=-b
+else
+    flag_b=
+fi
+
+if [ -z "$flag_U" ]; then
+    flag_u=-u
+else
+    flag_u=
+fi
+
+if [ -z "$flag_S" ]; then
+    "$COURSE_BIN"/grade_student_project -Ru $flag_q $flag_N $hw starter
+fi
+
+if [ -n "$flag_c" ] && [ -f "$continue" ]; then
+    start_with=$(cat "$continue")
+    printf >&4 "Continuing with $start_with...\nSkipping:"
+else
+    start_with=
+fi
+
+for netid in $(list_submitters $hw); do
+    if [ -n "$start_with" ]; then
+        if [ "$netid" = "$start_with" ]; then
+            start_with=
+            printf >&4 '\n'
+        else
+            printf >&4 ' %s' "$netid"
+            continue
+        fi
+    fi
+
+    netid_exists "$netid" || continue
+
+    echo $netid >| "$continue"
+
+    exit_code=
+    "$COURSE_BIN"/grade_student_project -R \
+        $flag_N $flag_b $flag_g $flag_q $flag_u \
+        $grade_project_flags $hw $netid "$evals" ||
+        exit_code=$?
+
+    if [ -n "$exit_code" ]; then
+        error_name='grade_student_project failure'
+
+        if [ -z "${ROBUSTNESS-}" ]; then
+            cass_fatal $exit_code "$error_name"
+        fi
+
+        echo>&4
+        echo>&4 "$0: $error_name ($exit_code)" | sed 's/./*/g'
+        echo>&4 "$0: $error_name ($exit_code)"
+
+        if [ $ROBUSTNESS -le 0 ]; then
+            cass_fatal 14 "too many failures; bailing out"
+        fi
+
+        retry_delay=5
+        echo>&4 "$0: $((ROBUSTNESS--)) attempts remain"
+        echo>&4 "$0: Retrying in $retry_delay seconds..."
+        sleep $retry_delay
+    fi
+done
+
+rm -f "$continue"
