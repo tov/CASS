@@ -113,9 +113,9 @@ generate_ls_log () {
     test_run_note
 
     unindent_fmt <<....EOF
-        Greetings! I am the CS 211 homework testing script,
-        and the purpose of this log is to inform you of my
-        most recent run.
+        Greetings! I am the ${course_name:-GSC} homework testing
+        script, and the purpose of this log is to inform you of my most
+        recent run.
 
         The time right now is $(human_datetime), and my next run is
         $(when_next_run).
