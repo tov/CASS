@@ -28,7 +28,7 @@ main () {
     cd "$repo"
     lang=$(detect_language)
 
-    case lang in
+    case $lang in
         (dssl2)
             ;;
         (c|cxx)
