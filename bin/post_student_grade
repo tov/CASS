@@ -132,20 +132,35 @@ update_about () {
 generate_log_legend () {
     echo "$CHECK_THESE"
     echo
-    describe_log build.log shows the output from building your code
-    describe_log error.log shows errors that have prevented me from \
-        testing your code
-    describe_log early.hlog shows your test results from this early trial run
-    describe_log tests.hlog shows your results from this test run
-    describe_log extension.log shows whether you were granted an \
-        automatic extension based on your current score
+    describe_log 'the output from building your code' \
+        build.log
+    describe_log 'errors that have prevented me from testing your code' \
+        error.log
+    describe_log 'your test results from this early trial run' \
+        early.hlog early.log
+    describe_log 'your results from this test run' \
+        tests.hlog tests.log
+    describe_log 'whether you were granted an automatic extension' \
+        +' based on your current score' \
+        extension.log
 }
 
 describe_log () {
-    if [ -f "$1" ]; then
-        echo " • $*."
-        echo
-    fi
+    local description="$1"; shift
+
+    while expr>/dev/null x"$1" : x+; do
+        description="$description $1"
+        shift
+    done
+
+    while [ $# -gt 0 ]; do
+        if [ -f "$1" ]; then
+            echo " • $1 shows $description"
+            echo
+            return
+        fi
+        shift
+    done
 }
 
 #####
