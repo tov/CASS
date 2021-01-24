@@ -8,20 +8,38 @@
 . "$(dirname "$0")/.CASS"
 course_use find grade
 
-eval "$(getargs -Rc hw netid repo=)"
-netid=$(resolve_student ${flag_R:+-C} $netid)
-if [ -z "$repo" ]; then
-    repo=$(find_team_repo $hw $netid)
-fi
-container=$(format_homework $hw)-$netid-build-$$
+process_args () {
+    eval "$(getargs -Rc hw netid repo=)"
+    netid=$(resolve_student ${flag_R:+-C} $netid)
+    if [ -z "$repo" ]; then
+        repo=$(find_team_repo $hw $netid)
+    fi
+    container=$(format_homework $hw)-$netid-build-$$
 
-# Preparation script can override this:
-HOST_MAKE='make -rf .tester/Host_build_makefile'
-TEST_HW=$hw
-TEST_NETID=$netid
-export HOST_MAKE
-export TEST_HW
-export TEST_NETID
+    # Preparation script can override this:
+    export HOST_MAKE='make -rf .tester/Host_build_makefile'
+    export TEST_HW=$hw
+    export TEST_NETID=$netid
+}
+
+main () {
+    process_args "$@"
+
+    cd "$repo"
+    lang=$(detect_language)
+
+    case lang in
+        (dssl2)
+            ;;
+        (c|cxx)
+            . $(find_homework_script $hw prepare)
+            docker_start build "$container"
+            ;;
+    esac
+
+    clean_build
+    do_build
+}
 
 guest () {
     docker exec $CURRENT_BUILD_CONTAINER "$@"
@@ -56,6 +74,25 @@ c_expand () {
     ' "$1"
 }
 
+cxx_contract () {
+    c_contract "$@"
+}
+
+cxx_expand () {
+    c_expand "$@"
+}
+
+dssl2_contract () {
+    "$@" | ubsed -E '
+               /^make\[[0-9]+\]: (Entering|Leaving) directory /d
+               s/ [0-9]>&[0-9]//
+           '
+}
+
+dssl2_expand () {
+    cat "$1"
+}
+
 save_warnings () {
     sed -E '
         /^(.+):[0-9]+:[0-9]+: (warning|error): .*/! d
@@ -70,14 +107,14 @@ save_warnings () {
 restore_warnings () {
     test -f "$1" || return 0
 
-    c_expand "$1" | while read _line; do
+    ${lang}_expand "$1" | while read _line; do
         touch -c "$_line"
     done
 }
 
 do_build () {
     restore_warnings .warnings
-    c_contract $HOST_MAKE | tee build.log
+    ${lang}_contract $HOST_MAKE | tee build.log
     save_warnings build.log .warnings
 }
 
@@ -86,15 +123,11 @@ clean_build () {
 
     if [ -f CMakeLists.txt -a -d build ]; then
         guest cmake --build build --target clean
-    elif [ -f Makefile ]; then
+    else
         $HOST_MAKE clean
     fi
 }
 
-cd "$repo"
-
-. $(find_homework_script $hw prepare)
-
-docker_start build "$container"
-clean_build
-do_build
+#########
+main "$@"
+#########
