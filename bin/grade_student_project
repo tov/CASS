@@ -264,7 +264,8 @@ host_make () {
     if [ -n "$progs$tests" ]; then
         set -- "$@" CMAKE_EXES="$tests $progs"
     fi
-    hilite make -rf .tester/Host_test_makefile "$@" TEST_NETID=$netid
+    hilite make -rf .tester/Host_test_makefile "$@" \
+        TEST_HW=$hw TEST_NETID=$netid
 }
 
 test_project () {
