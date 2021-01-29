@@ -70,6 +70,7 @@ check_expected_files () {
 
     case $((hw)) in
         (1) check_file warmup.rkt ;;
+        (2) check_file stack-queue.rkt ;;
     esac
 }
 
