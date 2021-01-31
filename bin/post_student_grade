@@ -42,14 +42,7 @@ process_arguments () {
                 exit 2
             fi
 
-            case "$dir" in
-                [/~]*)
-                    ;;
-                *)
-                    dir="$(pwd)/$dir"
-                    ;;
-            esac
-
+            dir="$(cd "$dir" && pwd)"
             netid=$(basename "$dir")
             hw=$(basename "$(dirname "$dir")")
             hw=${hw#hw}
