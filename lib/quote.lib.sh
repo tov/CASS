@@ -34,10 +34,14 @@ sh_bs () {
     printf %sX "$1" | sed "$_sed_shell_bs"
 }
 
+re_match () {
+    expr x"$1" : x"$2" >/dev/null
+}
+
 shell_quote () {
-    if ! expr "$1" : ".*[$shell_bs_chars]" >/dev/null; then
+    if ! re_match "$1" ".*[$shell_bs_chars]"; then
         printf '%s\n' "$1"
-    elif ! expr "$1" : ".*'" >/dev/null; then
+    elif ! re_match "$1" ".*'"; then
         sh_sq "$1"
     else
         sh_dq "$1"
