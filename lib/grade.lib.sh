@@ -149,10 +149,17 @@ program_test_log_prefix () {
     printf 'logs/%03d-%s' $program_test_tag "$1"
 }
 
+clean_case_name () {
+    echo "$1" | sed -E '
+        s%^([^ ]+=[^ ]* +)+%%
+        s%[/ ]%@%g
+    '
+}
+
 program_test () {
     local command;      command=$1; shift
     local realcmd;      realcmd=$command
-    local casename;     casename=$(echo "$command" | sed 's%[/ ]%@%g')
+    local casename;     casename=$(clean_case_name "$command")
     local prefix;       prefix=$(program_test_log_prefix "$casename")
     local docker_opts;  docker_opts=
 
