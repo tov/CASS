@@ -181,6 +181,11 @@ program_test () {
     local exp_log;      exp_log=$prefix.exp-log
     local exp_exitcode; exp_exitcode=
 
+    case "$command" in
+        (=*) command="${command#=}" ;;
+        (*)  command="./${command}" ;;
+    esac
+
     rm -Rf logs
     mkdir logs
     touch "$act_in"
@@ -256,7 +261,7 @@ program_test () {
     . "$check_sh" > "$check_out"
 
     html_program_test $(captured_actual) $(captured_possible) \
-        "$(print_filename "./$command")"
+        "$(print_filename "$command")"
 
     if [ -f "$message" ]; then
         html_p "$(cat "$message")"
