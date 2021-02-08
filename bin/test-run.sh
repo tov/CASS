@@ -1,8 +1,14 @@
 #!/bin/sh
 
+exec 9<"$0"
+if ! flock -en 9; then
+    printf '%s: could not acquire lock [%s]\n\n' "$0" "$(date)"
+    ps uxww
+    exit 2
+fi >&2
+
 set -eu
 . "$(dirname "$0")/.CASS"
-
 eval "$(getargs log_level=-)"
 
 export LATENCY='=not scheduled'
@@ -83,24 +89,12 @@ one_run () {
     advance_log_level
 }
 
-interference_check () {
-    local my_pid
-    local other_pids
-
-    my_pid=$$
-    if other_pids=$(pgrep "$0" | grep -v "^$my_pid\$") &&
-        [ -n "$other_pids" ]
-    then
-        open_log skipped
-        info Terminating because the previous run is still going...
-        echo
-        echo Relevant processes:
-        ps $other_pids
-        echo
-        echo All processes:
-        ps auxww
-        exit
-    fi
+do_flock () {
+    TEST_RUN_LOCKED=1 \
+        flock --conflict-exit-code 22 --close --nonblock --verbose \
+        "$log_dir" \
+        env TEST_RUN_LOCKED=1 \
+        "$@"
 }
 
 dbug () {
@@ -113,11 +107,6 @@ info () {
 
 warn () {
     info "*** $* ***" >&2
-}
-
-save_fds () {
-    exec 7>&1
-    exec 8>&2
 }
 
 open_log () {
@@ -144,8 +133,8 @@ main () {
     log_dir="$HOME"/test-logs/$course_id
     mkdir -p "$log_dir"
 
-    save_fds
-    interference_check
+    exec 7>&1
+    exec 8>&2
 
     . "$COURSE_VAR"/current-test-run
 
