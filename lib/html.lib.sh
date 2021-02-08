@@ -140,8 +140,8 @@ html_io_lines () {
 
     html_escape | ubsed -E '
         ${
-            /^%$/d
-            s@%$@<span class="no-newline">%</span>@
+            /^\$$/d
+            s@\$$@<span class="no-newline">%</span>@
         }
         :loop
         /([[:space:]])([[:space:]]*)$/{
