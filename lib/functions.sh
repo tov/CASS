@@ -246,7 +246,7 @@ getargs () (
                 ;;
             ?*=*)
                 echo 'if [ $# = 0 ]; then'
-                    define_var ${arg%%=*} ${argv#*=}
+                    define_var ${arg%%=*} ${arg#*=}
                 echo 'else'
                     define_var ${arg%%=*} '$1'
                 echo '  shift'
