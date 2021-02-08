@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# Disallow multiple concurrent runs of this script.
 exec 9<"$0"
 if ! flock -en 9; then
     printf '%s: could not acquire lock [%s]\n\n' "$0" "$(date)"
@@ -11,8 +12,9 @@ set -eu
 . "$(dirname "$0")/.CASS"
 eval "$(getargs log_level=-)"
 
-export LATENCY='=not scheduled'
 export PATH=$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+export LATENCY='=not scheduled'
+export ROBUSTNESS=15
 
 alias now="date +'[%b %d %H:%M:%S]'"
 
@@ -79,7 +81,6 @@ one_run () {
     done
 
     local hw; hw=$1; shift
-    export ROBUSTNESS; ROBUSTNESS=15
 
     (
     open_log hw$hw
