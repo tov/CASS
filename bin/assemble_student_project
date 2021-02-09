@@ -71,6 +71,11 @@ check_expected_files () {
     case $((hw)) in
         (1) check_file warmup.rkt ;;
         (2) check_file stack-queue.rkt ;;
+        (3) check_file dictionaries.rkt ;;
+        (4) check_file graph.rkt ;;
+        (5) check_file binheap.rkt ;;
+        (6) check_file unionfind.rkt ;;
+        (7) check_file planner.rkt ;;
     esac
 }
 
