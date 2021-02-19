@@ -241,7 +241,7 @@ prepare_docker_image () {
     fi
 
     "$bin"/prepare_docker_image \
-        $flag_b $flag_q $flag_p \
+        -R $flag_b $flag_q $flag_p \
         $hw $netid $evals >&3
 }
 
