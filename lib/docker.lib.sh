@@ -50,6 +50,7 @@ try_docker_start () {
                     --name "$name" \
                     --rm --read-only --init --detach \
                     --tmpfs /tmp \
+                    --tmpfs /home/student/.cache \
                     --env PULSE_SERVER="$DOCKER_HOST" \
                     --volume "$(pwd):/hw:ro" \
                     --volume "$(pwd)/out:/out:rw" \
