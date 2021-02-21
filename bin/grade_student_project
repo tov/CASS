@@ -1,6 +1,6 @@
 #!/bin/sh
 
-exec 0<&-
+exec 0</dev/null
 
 . "$(dirname "$0")/.CASS"
 course_use announce cmake grade publish
