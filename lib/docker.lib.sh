@@ -4,7 +4,7 @@ docker_time_limit=600
 
 docker_lib_on_exit () {
     for hash in $docker_kill_on_exit_list; do
-        docker kill $hash >/dev/null
+        docker kill $hash >/dev/null || true
     done
 }
 
