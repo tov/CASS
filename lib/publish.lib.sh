@@ -52,6 +52,26 @@ FIXUP_TEMPLATE='
 &:|
 '
 
+link_dir () {
+    local src_dir="$1" dst_dir="$2"
+
+    if dir_is_empty "$src_dir"; then
+        return
+    fi
+
+    mkdir -p "$dst_dir"
+
+    local src dst
+    for src in "$src_dir"/*; do
+        dst="$dst_dir/${src#$src_dir}"
+        if [ -d "$src" ]; then
+            link_dir "$src" "$dst"
+        else
+            ln -f "$src" "$dst"
+        fi
+    done
+}
+
 publish_dir () {
     local args; args=
     local deps; deps=false
