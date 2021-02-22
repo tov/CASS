@@ -55,7 +55,7 @@ canvas_curl () {
             ;;
     esac
 
-    $maybe curl --silent --request "$verb" \
+    $maybe curl --silent --location --request "$verb" \
         --header "Authorization: Bearer $token" \
         "$@" "$uri"
 }
