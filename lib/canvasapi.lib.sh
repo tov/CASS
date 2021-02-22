@@ -102,6 +102,16 @@ canvas_api_list_students () {
         -F 'enrollment_type[]=student'
 }
 
+canvas_api_list_assignments () {
+    get_all_pages 'canvas_curl GET' c/assignments \
+        ${1:+-F "search_term=$1"}
+}
+
+canvas_api_list_submissions () {
+    local asst=${1:?assignment id}
+    get_all_pages 'canvas_curl GET' c/assignments/$asst/submissions
+}
+
 canvas_api_create_group_cat () {
     eval "$(getargs + name)"
     canvas_curl POST $(URI_course_group_categories) \
