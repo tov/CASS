@@ -12,6 +12,14 @@ case $1 in
         canvas_api_list_students
         exit
         ;;
+    --assignments)
+        canvas_api_list_assignments $2
+        exit
+        ;;
+    --submissions)
+        canvas_api_list_submissions $2
+        exit
+        ;;
     *)
         maybe_dry_run=
         ;;
