@@ -4,6 +4,10 @@ course_load_var CANVAS_OAUTH canvas_oauth.secret
 
 course_use apicommon quote
 
+if [ -n "${CANVAS_COURSE_ID-}" ]; then
+    canvas_course_id=$CANVAS_COURSE_ID
+fi
+
 canvas_api=https://$canvas_host/api/v1
 canvas_api_course=$canvas_api/courses/$canvas_course_id
 canvas_api_graphql=https://$canvas_host/api/graphql
