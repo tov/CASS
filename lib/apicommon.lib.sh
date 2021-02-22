@@ -5,7 +5,7 @@ get_all_pages () {
     local uri; uri="$1"; shift
 
     local tmp; tmp=$(mktemp -t cass-headers.XXXXXX)
-    trap 'rm -f "$tmp"' RETURN
+    trap "rm -f '$tmp'" RETURN
 
     while [ -n "$uri" ]; do
         $get "$uri" -D"$tmp" "$@"
