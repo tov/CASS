@@ -66,6 +66,8 @@ link_dir () {
         dst="$dst_dir/${src#$src_dir}"
         if [ -d "$src" ]; then
             link_dir "$src" "$dst"
+        elif [ -L "$src" ]; then
+            ln -f "$(realpath "$src")" "$dst"
         else
             ln -f "$src" "$dst"
         fi
