@@ -28,11 +28,15 @@ main () {
     cd "$repo"
     lang=$(detect_language)
 
+    rm -f build.log
+    touch build.log
+
     case $lang in
         (dssl2)
             ;;
         (c|cxx)
-            . $(find_homework_script $hw prepare)
+            . $(find_homework_script $hw prepare) 2>&1 |
+                tee -a build.log 1>&2
             docker_start build "$container"
             ;;
     esac
@@ -116,7 +120,7 @@ restore_warnings () {
 
 do_build () {
     restore_warnings .warnings
-    ${lang}_contract $HOST_MAKE | tee build.log
+    ${lang}_contract $HOST_MAKE | tee -a build.log
     save_warnings build.log .warnings
 }
 
