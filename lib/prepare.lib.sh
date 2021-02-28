@@ -9,25 +9,16 @@ restore_starter_files () (
 )
 
 restore_starter_files_from () {
-    find "$1/$2" -type f | while read file; do
-        if head -2 "$file" | fgrep -q "$NO_CHANGE_MARKER"; then
-            rsync --times "$file" "$2/"
+    find "$1/$2" -type f | while read starter; do
+        if head -2 "$starter" | fgrep -q "$NO_CHANGE_MARKER"; then
+            local base="${starter##*/}"
+            local submit="$2/$base"
+            if [ -e "$submit" ] && ! cmp -s "$starter" "$submit"; then
+                modified_at_all_warning "$base" >&2
+            fi
+            rsync --times "$starter" "$submit"
         fi
     done
-}
-
-same_above_line () {
-    local line=$1 a=$2 b=$3
-
-    local ta=$(mktemp -t prepare_lib_a.XXXXXX)
-    trap "rm -f '$ta'"       RETURN
-    local tb=$(mktemp -t prepare_lib_b.XXXXXX)
-    trap "rm -f '$ta' '$tb'" RETURN
-
-    head -$line "$a" > "$ta"
-    head -$line "$b" > "$tb"
-
-    diff "$ta" "$tb" >/dev/null
 }
 
 repair_starter_file () (
@@ -48,22 +39,52 @@ repair_starter_file () (
         sed "${marker_line}q"   $original
         sed "1,${marker_line}d" $saved
     else
-        unindent . >&2 <<........END
-        WARNING: It appears that file ‘$file’ has been changed
-        above the line that says:
-
-       .    $NO_CHANGE_ABOVE
-
-        I am replacing the version of ‘$file’ that you submitted
-        with the version from the starter code. This means it is
-        likely that I won’t be able to build your code.
-
-........END
+        modified_above_warning "$file" >&2
         cat $original
     fi > $file
 
     touch -m -r $saved $file
 )
+
+same_above_line () {
+    local line=$1 a=$2 b=$3
+
+    local ta=$(mktemp -t prepare_lib_a.XXXXXX)
+    trap "rm -f '$ta'"       RETURN
+    local tb=$(mktemp -t prepare_lib_b.XXXXXX)
+    trap "rm -f '$ta' '$tb'" RETURN
+
+    head -$line "$a" > "$ta"
+    head -$line "$b" > "$tb"
+
+    diff "$ta" "$tb" >/dev/null
+}
+
+modified_at_all_warning () {
+    modified_warning "$1" \
+        'despite the comment at the top that reads' \
+        "$NO_CHANGE_MARKER"
+}
+
+modified_above_warning () {
+    modified_warning "$1" \
+        'above the line that says' \
+        "$NO_CHANGE_ABOVE"
+}
+
+modified_warning () {
+    unindent . <<....END
+        WARNING: It appears that your file ‘${1##*/}’ has been changed
+        ${2}:
+
+       .    ${3}
+
+        I am replacing the version of ‘${1##*/}’ that you submitted
+        with the version from the starter code. This means it is
+        possible that I won’t be able to build your code.
+
+....END
+}
 
 generate_install_sh () {
     generate_install_sh_helper "$@" > install.sh
