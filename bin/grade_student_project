@@ -201,6 +201,8 @@ configure_and_build () {
     else
         docker_step=false
         test_step=false
+        rm_log early
+        rm_log tests
         hilite generate_build_error
         did 'build error'
         disposition='build error'
