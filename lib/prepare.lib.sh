@@ -1,5 +1,6 @@
-NO_CHANGE_MARKER="* DO NOT CHANGE ANYTHING IN THIS FILE *"
-NO_CHANGE_ABOVE_RE="[*] DO NOT CHANGE ANYTHING ABOVE THIS LINE [*]"
+NO_CHANGE_MARKER='* DO NOT CHANGE ANYTHING IN THIS FILE *'
+NO_CHANGE_ABOVE='DO NOT CHANGE ANYTHING ABOVE THIS LINE'
+NO_CHANGE_ABOVE_RE="[*] ${NO_CHANGE_ABOVE} [*]"
 
 restore_starter_files () (
     starter_dir=$(find_homework $1)/starter
@@ -15,6 +16,20 @@ restore_starter_files_from () {
     done
 }
 
+same_above_line () {
+    local line=$1 a=$2 b=$3
+
+    local ta=$(mktemp -t prepare_lib_a.XXXXXX)
+    trap "rm -f '$ta'"       RETURN
+    local tb=$(mktemp -t prepare_lib_b.XXXXXX)
+    trap "rm -f '$ta' '$tb'" RETURN
+
+    head -$line "$a" > "$ta"
+    head -$line "$b" > "$tb"
+
+    diff "$ta" "$tb" >/dev/null
+}
+
 repair_starter_file () (
     starter_dir=$(find_homework $1)/starter
     file=$2
@@ -25,14 +40,27 @@ repair_starter_file () (
         return
     fi
 
-    marker_line=$(sed "/$NO_CHANGE_ABOVE_RE/q" $original | wc -l)
-
     mv $file $saved
 
-    {
+    marker_line=$(sed "/$NO_CHANGE_ABOVE_RE/q" $original | wc -l)
+
+    if same_above_line $marker_line $original $saved; then
         sed "${marker_line}q"   $original
         sed "1,${marker_line}d" $saved
-    } > $file
+    else
+        unindent . >&2 <<........END
+        WARNING: It appears that file ‘$file’ has been changed
+        above the line that says:
+
+       .    $NO_CHANGE_ABOVE
+
+        I am replacing the version of ‘$file’ that you submitted
+        with the version from the starter code. This means it is
+        likely that I won’t be able to build your code.
+
+........END
+        cat $original
+    fi > $file
 
     touch -m -r $saved $file
 )
