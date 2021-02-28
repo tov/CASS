@@ -43,6 +43,7 @@ main () {
 
     clean_build
     do_build
+    test -f .success
 }
 
 guest () {
