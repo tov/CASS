@@ -29,14 +29,14 @@ main () {
     lang=$(detect_language)
 
     rm -f build.log
-    touch build.log
 
     case $lang in
         (dssl2)
+            touch build.log
             ;;
         (c|cxx)
-            . $(find_homework_script $hw prepare) 2>&1 |
-                tee -a build.log 1>&2
+            . $(find_homework_script $hw prepare) 2>build.log
+            cat build.log >&2
             docker_start build "$container"
             ;;
     esac
