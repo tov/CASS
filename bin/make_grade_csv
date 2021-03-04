@@ -5,8 +5,8 @@
 . "$(dirname "$0")/.CASS"
 
 gsc admin csv | {
-    read header_line
-    printf '%s\n' "$header_line"
+    read netid headers
+    printf '%s,%s,%s,%s\n' last first "$netid" "$headers"
 
     while read line; do
         netid=$(expr "$line" : '\([^,]*\)')
