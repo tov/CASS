@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# Sets a student's exam grade in the grade database.
+
+. "$(dirname "$0")/.CASS"
+
+gsc admin csv | while read line; do
+    netid=$(expr "$line" : '\([^,]*\)')
+    grades=$(expr "$line" : '[^,]*,\(.*\)')
+
+    netid_exists $netid || continue
+
+    last=$(print_student_property $netid last | tr -d ',"')
+    first=$(print_student_property $netid first | tr -d ',"')
+
+    printf '%s,%s,%s,%s\n' "$last" "$first" "$netid" "$grades"
+done
