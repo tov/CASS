@@ -4,14 +4,19 @@
 
 . "$(dirname "$0")/.CASS"
 
-gsc admin csv | while read line; do
-    netid=$(expr "$line" : '\([^,]*\)')
-    grades=$(expr "$line" : '[^,]*,\(.*\)')
+gsc admin csv | {
+    read header_line
+    printf '%s\n' "$header_line"
 
-    netid_exists $netid || continue
+    while read line; do
+        netid=$(expr "$line" : '\([^,]*\)')
+        grades=$(expr "$line" : '[^,]*,\(.*\)')
 
-    last=$(print_student_property $netid last | tr -d ',"')
-    first=$(print_student_property $netid first | tr -d ',"')
+        netid_exists $netid || continue
 
-    printf '%s,%s,%s,%s\n' "$last" "$first" "$netid" "$grades"
-done
+        last=$(print_student_property $netid last | tr -d ',"')
+        first=$(print_student_property $netid first | tr -d ',"')
+
+        printf '%s,%s,%s,%s\n' "$last" "$first" "$netid" "$grades"
+    done
+}
