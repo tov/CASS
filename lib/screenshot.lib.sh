@@ -17,6 +17,8 @@ screenshot_program () {
     trap COURSE_GRADE_TIMEOUT=$COURSE_GRADE_TIMEOUT RETURN
     COURSE_GRADE_TIMEOUT=15
 
+    pulseaudio --start >/dev/null 2>&1 || true
+
     png=$1-screenshot.png
     points=0
     program_test $1 \
