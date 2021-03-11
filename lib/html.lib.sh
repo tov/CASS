@@ -64,13 +64,18 @@ html_try_close_test_case () {
     fi
 }
 
+# Usage: html_test_case ACTUAL POSSIBLE TITLE
 html_test_case () {
     html_try_close_test_case
 
+    local detail_attr=
     local outcome_class
-    local detail_attr
+
+    if [ -n "${HTML_DETAILS_OPEN-}" ]; then
+        detail_attr='open="open"'
+    fi
+
     if [ "$1" = "$2" ]; then
-        detail_attr=
         outcome_class=passed
     else
         detail_attr='open="open"'
