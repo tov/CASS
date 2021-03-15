@@ -1,0 +1,20 @@
+#!/bin/sh
+
+set -eu
+. "$(dirname "$0")/.CASS"
+eval "$(getargs hw eval_item ...)"
+
+set -- "$eval_item" "$@"
+hw=hw${hw#hw}
+grade_base=${gsc_base}/grade/
+
+while read email; do
+    netid=$(resolve_student "$email")
+
+    for item; do
+        permalink=$(gsc admin permalink $hw $netid $item 2>/dev/null) || true
+        printf '%s\t' "${grade_base}${permalink}"
+    done
+
+    printf '%s\n' "$email"
+done
