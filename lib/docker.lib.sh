@@ -1,6 +1,7 @@
 # Start, use, and stop docker.
 
 docker_time_limit=600
+docker_memory_limit=128m
 
 docker_lib_on_exit () {
     for hash in $docker_kill_on_exit_list; do
@@ -49,6 +50,7 @@ try_docker_start () {
                 docker run \
                     --name "$name" \
                     --rm --read-only --init --detach \
+                    --memory=$docker_memory_limit \
                     --tmpfs /tmp \
                     --tmpfs /home/student/.cache \
                     --env PULSE_SERVER="$DOCKER_HOST" \
