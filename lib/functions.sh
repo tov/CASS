@@ -132,18 +132,6 @@ assert () {
     }
 }
 
-find_single () {
-    eval "$(getargs + description ...)"
-
-    if [ -z "${1-}" ] || [ -n "${2-}" ]; then
-        printf "Cannot resolve %s\n" "$description" >&4
-        printf "Candidates were: %s\n" "$*" | fmt   >&4
-        exit 2
-    fi
-
-    printf '%s\n' "$1"
-}
-
 getargs () (
     set +x
     usage='Usage: eval "$(getargs [+[CMD]] [-OPTS] ARGNAME... [[RESTNAME]...[+]])"'
