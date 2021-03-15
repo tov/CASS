@@ -287,7 +287,15 @@ dump_args () {
 ### END helpers for getargs
 
 headingf () {
-    eval "$(getargs + -s char fmt ...)"
+    local flag_s=
+    if [ "${1-}" = -s ]; then
+        flag_s=-s; shift
+    fi
+
+    local char="${1?char}"
+    local char="${2?fmt}"
+    shift 2
+
     char=$char$char$char
     fmt='\n%s\n%s '$fmt' %s\n%s\n'
     printf "$fmt" "$char" "$char" "$@" "$char" "$char"
@@ -307,9 +315,9 @@ netid_exists () {
 }
 
 find_single () {
-    eval "$(getargs + description ...)"
+    local description="${1?description}"; shift
 
-    if [ $# != 1 ]; then
+    if [ -z "${1-}" ] || [ -n "${2-}" ]; then
         printf "Cannot resolve %s\n" "$description" >&4
         printf "Candidates were: %s\n" "$*" | fmt   >&4
         exit 2
