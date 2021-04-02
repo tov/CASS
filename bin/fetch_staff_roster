@@ -20,8 +20,8 @@ const niceName = name => {
 }
 
 const abbrevEmail = email => {
-  const matches = email.match(/^(.*@.*)[.]northwestern[.]edu$/)
-  return matches ? matches[1] : email
+  const matches = email?.match(/^(.*@.*)[.]northwestern[.]edu$/)
+  return matches ? matches[1] : email || '???'
 }
 
 const printHeader = () => {
