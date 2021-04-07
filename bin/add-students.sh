@@ -7,22 +7,40 @@
 #
 #   -c    use cached data if available rather than asking Canvas
 #   -q    don’t print students while adding them
+#   -r    also remove students who have dropped
 #   -D    pass --debug flag to CASS
 #   -N    dry run -- don’t actually modify anything
 #
 
 set -eu
 . "$(dirname "$0")/.CASS"
-eval "$(getargs -cqDN json_src_command...)"
-
 course_use dry_run
-dry_run_if [ -n "$flag_N" ]
 
-# If we aren’t told how to fetch the roster, use the `fetch_roster`
-# program:
-if [ $# = 0 ]; then
-    set -- "$COURSE_BIN"/fetch_roster $flag_c $flag_D --json
-fi
+main () {
+    eval "$(getargs -cqrDN json_src_command...)"
+    dry_run_if [ -n "$flag_N" ]
+
+    # If we aren’t told how to fetch the roster, use the `fetch_roster`
+    # program:
+    if [ $# = 0 ]; then
+        set -- "$COURSE_BIN"/fetch_roster $flag_c $flag_D --json
+    fi
+
+    if [ -n "$flag_r" ]; then
+        remove_old_students
+    fi
+
+    eval "$("$@" | json_to_sh)"
+}
+
+remove_old_students () {
+    local dir
+    for dir in ${COURSE_ROSTER}/*; do
+        if [ -d "$dir" -a ! -e "$dir/.PIN" ]; then
+            rm -R "$dir"
+        fi
+    done
+}
 
 save_prop () {
     "$COURSE_BIN"/set_student_property.sh "$@";
@@ -52,4 +70,6 @@ json_to_sh () {
     '
 }
 
-eval "$("$@" | json_to_sh)"
+###########
+main "$@" #
+###########
