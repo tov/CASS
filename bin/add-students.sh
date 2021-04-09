@@ -6,7 +6,7 @@
 # Options:
 #
 #   -c    use cached data if available rather than asking Canvas
-#   -q    don’t print students while adding them
+#   -q    don’t print students while removing or adding them
 #   -r    also remove students who have dropped
 #   -D    pass --debug flag to CASS
 #   -N    dry run -- don’t actually modify anything
@@ -37,7 +37,11 @@ remove_old_students () {
     local dir
     for dir in ${COURSE_ROSTER}/*; do
         if [ -d "$dir" -a ! -e "$dir/.PIN" ]; then
-            rm -R "$dir"
+            if [ -z "${flag_q}${flag_N}" ]; then
+                echo rm "$dir"
+            fi
+
+            _N rm -R "$dir"
         fi
     done
 }
