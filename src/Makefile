@@ -5,6 +5,10 @@ CFLAGS      = -O2 -pedantic -Wall
 all: $(EXES)
 .PHONY: all
 
+install: $(EXES)
+	install -m755 $^ ../bin
+.PHONY: install
+
 html_io_lines: html_io_lines.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
