@@ -103,10 +103,6 @@ evaluate_input_param () {
                 cat "$1"
                 ;;
         esac
-
-        if [ "$3" = \$ ]; then
-            echo \$
-        fi
     } >> "$2"
 }
 
@@ -218,17 +214,17 @@ program_test () {
                 ;;
             -1*)
                 get_param
-                evaluate_input_param "$p" "$exp_out" \$
+                evaluate_input_param "$p" "$exp_out"
                 do_later check_output $np "$exp_out" "$act_out" stdout
                 ;;
             -2*)
                 get_param
-                evaluate_input_param "$p" "$exp_err" \$
+                evaluate_input_param "$p" "$exp_err"
                 do_later check_output $np "$exp_err" "$act_err" stderr
                 ;;
             -3*)
                 get_param
-                evaluate_input_param "$p" "$exp_log" \$
+                evaluate_input_param "$p" "$exp_log"
                 do_later check_output $np "$exp_log" "$act_log" 'test log'
                 ;;
             -c*)

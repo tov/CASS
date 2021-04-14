@@ -1,8 +1,5 @@
 # HTML output for grading.
 
-del_char=$(printf '\x7F')
-esc_char=$(printf '\x1B')
-
 html_escape () {
     ubsed -E '
         s@&@\&amp;@g
@@ -138,37 +135,9 @@ html_test_failed () {
 }
 
 html_io_lines () {
-    local tag
-    tag="<span class=\"$2\"><span class=\"txt-only\">$1 </span>"
-
-    printf '<code class="io-lines">'
-
-    html_escape | ubsed -E '
-        ${
-            /^\$$/d
-            s@\$$@<span class="no-newline">%</span>@
-        }
-        :loop
-        /([[:space:]])([[:space:]]*)$/{
-            s@@<span class="trailing-ws">\1</span>\2@
-            bloop
-        }
-        s@'"$del_char"'@<span class="control-char">\\x7F</span>@g
-        s@'"$esc_char"'@<span class="control-char">\\x1B</span>@g
-        s@.*@'"$tag"'&</span>@
-    ' | sanitize_utf8
-
+    echo '<code class="io-lines">'
+    "${COURSE_BIN}"/html_io_lines "$@"
     echo '</code>'
-}
-
-sanitize_utf8 () {
-    if which uconv >/dev/null 2>&1; then
-        uconv --callback escape-unicode \
-              -f UTF-8 -t UTF-8
-    else
-        iconv --byte-subst='<span class="invalid-byte">\x%X</span>' \
-              -f UTF-8 -t UTF-8
-    fi
 }
 
 ccgo_open='<code class="grep-output">'
