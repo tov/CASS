@@ -1,0 +1,321 @@
+#!/bin/zsh
+
+RG=$(which rg)
+
+if (( ! $# ))
+then
+    set -- \
+        '\(WuGraph\?\)'         'just WuGraph? in parens'\
+        '\( *WuGraph\? *\)'     'allow space (any amount) within parens' \
+        ': *\( *WuGraph\? *\)'  'require colon in front; allow space after' \
+        ': *\( *[[:alnum:]_]+\? *\)' \
+                                'any predicate, not just WuGraph?' \
+        ': *WuGraph\?'          'WuGraph? after colon, no parens' \
+        'WuGraph\?'             'WuGraph? anywhere' \
+        ': *[[:alnum:]_]+\?'    'any predicate after colon' \
+        '^[^#]'                 'first non-blank, non-comment line'
+fi
+
+main () {
+    html_begin Data science
+    count_table "$@"
+    sample "$@"
+    html_end
+}
+
+html_begin () {
+    cat <<EOF
+<!DOCTYPE html>
+<html>
+<head>
+  <title>$(print -n "$*" | html_escape)</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font: 12pt sans-serif;
+    }
+    h2 {
+        position: relative;
+        margin: 0 0 1em 0;
+        padding: 6pt 1em;
+        color: #def;
+        background-color: #333;
+    }
+    th, td {
+      text-align: left;
+    }
+    a {
+        margin-bottom: 1pt;
+        padding: 1pt;
+        text-decoration: none;
+        border-bottom: 1pt dashed;
+    }
+
+    a:hover {
+        border-bottom-style: solid;
+    }
+
+    td.pattern a {
+        display: inline-block;
+        color: #006;
+    }
+
+    td.description {
+        color: #666;
+        font-size: 80%;
+    }
+
+    span.top {
+        display: inline-block;
+        position: absolute;
+        right: 2em;
+        font-size: 80%;
+        font-weight: normal;
+    }
+
+    span.top a {
+        color: #ff8;
+    }
+
+    table {
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 2pt 2pt;
+    }
+    thead>tr:first-child {
+        border-top: 2pt solid;
+    }
+    tbody>tr:nth-child(odd) {
+        background-color: #ff05;
+    }
+    tbody>tr:first-child {
+        border-top: 2pt solid;
+    }
+    tbody>tr:last-child {
+        border-bottom: 2pt solid;
+    }
+    thead>tr:first-child>*, tbody>tr:first-child>* {
+      padding-top: 4pt;
+    }
+    thead>tr:last-child>*, tbody>tr:last-child>* {
+      padding-bottom: 4pt;
+    }
+
+    .total-counts, .match-lines {
+        border-top: 2pt solid;
+        border-bottom: 2pt solid;
+        margin: 1em 2em;
+    }
+
+    .total-counts {
+        width: 50%;
+    }
+
+    .total-counts table {
+        width: 100%;
+    }
+
+    .match-lines {
+        max-width: 100%;
+        max-height: 10em;
+        overflow: auto;
+    }
+
+    .total-counts tr>*:first-child {
+        padding-right: 2em;
+    }
+
+    .match-lines table {
+        table-layout: fixed;
+    }
+
+    th.count, td.count {
+        text-align: right;
+    }
+
+    th.sequence {
+        width: 2em;
+    }
+    th.filename {
+        width: 12em;
+    }
+    th.line-number {
+        text-align: right;
+    }
+
+    td.sequence {
+        max-width: 2em;
+        text-align: right;
+        overflow-x: visible;
+        font-size: 75%;
+        color: #666;
+    }
+    td.file-name {
+        max-width: 12em;
+        overflow-x: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 80%;
+    }
+    td.line-number {
+        max-width: 2em;
+        text-align: right;
+        font-size: 75%;
+        color: #798;
+    }
+
+    code {
+      white-space: pre;
+      text-overflow: ellipsis;
+      color: #060;
+    }
+    h2 code {
+        color: #F9C;
+    }
+  </style>
+</head>
+<body>
+EOF
+}
+
+html_end () {
+    print '</main></body></html>'
+}
+
+h2 () {
+    local id=$1; shift
+    local fmt=$1; shift
+    printf "<h2 id='$id'>$fmt</h2>\n" "$@"
+}
+
+tag () {
+    case ${2-} in
+        (.?*)
+            printf '<%s class=%s>' "$1" "${2#.}"
+            ;;
+        (*)
+            printf '<%s>' "$1"
+            ;;
+    esac
+
+    ! expr>/dev/null X"${2-}" : X'[.]'
+}
+
+table_begin () {
+    tag div "$@" || shift $?
+    print -nr '<table><thead><tr>'
+    while (( $# ))
+    do
+        tag th "$@" || shift $?
+        print "$1" | html_escape | tr -s '\n' ' '
+        shift
+    done
+    print -nr '</thead>'
+}
+
+table_end () {
+    print -r '</tbody></table></div>'
+}
+
+count_row='<tr><td class=pattern><a href="#%s"><code>%s</code></a><td class=description>%s<td class=count>%d\n'
+count_table () {
+    h2 top 'How many files does each pattern appear in?'
+
+    table_begin .total-counts \
+        .pattern Pattern \
+        .description Description \
+        .count '# of Files'
+    while (( $# ))
+    do
+        printf "$count_row" \
+            $(fragmentize "$1") \
+            "$1" "$2" \
+            $(count_matches "$1")
+        shift 2
+    done
+    table_end
+}
+
+sample () {
+    local count frag
+    while (( $# ))
+    do
+        count=$(count_matches "$1")
+        frag=$(fragmentize "$1")
+
+        h2 $frag \
+            '%d files matching <code>%s</code> <span class=top>[<a href="#top">top</a>]</span>' \
+            $count "$1"
+
+        table_begin .match-lines \
+            .sequence '' \
+            .filename Filename \
+            .line-number '' \
+            .code-line Code
+        show_samples "$1"
+        table_end
+
+        shift 2
+    done
+}
+
+show_samples () {
+
+    $RG --no-heading -nm 1 "$1" */* | html_escape | {
+
+        count=0
+        while IFS=: read -r file_name line_number code_line
+        do
+            printf '<tr><td class=sequence>%d' $((++count))
+            printf '<td class=file-name>%s' "$file_name"
+            printf '<td class=line-number>%d' "$line_number"
+            printf '<td class=code-line><code>%s</code>' "$code_line"
+        done | tr -d '\n'
+    }
+}
+
+putword () {
+    if expr>/dev/null x"$1" : '\(x\)\(.*[^a-zA-Z0-9./_-].*\)\{0,1\}$'
+    then
+        set -- "${(qq)1}"
+    fi
+    print -nr "$1"
+}
+
+html_escape () {
+    sed '
+        s@&@\&amp;@g
+        s@<@\&lt;@g
+        s@>@\&gt;@g
+    '
+}
+
+fragmentize () {
+    print -nr "$1" | sed -E '
+        s@\(@-lpar-@g
+        s@\)@-rpar-@g
+        s@\[@-lbrk-@g
+        s@\]@-rbrk-@g
+        s@\\@-bs-@g
+        s@\*@-ast-@g
+        s@\?@-huh-@g
+        s@:@-col-@g
+        s@[ -]+@-@g
+        s@^-@@
+        s@-$@@
+    '
+}
+
+count_matches () {
+    $RG --no-heading -cIm 1 "$1" */* | sum
+}
+
+sum () {
+    sed '2,$s/$/ +/; $s/$/ p/' | dc
+}
+
+###########
+main "$@" #
+###########
