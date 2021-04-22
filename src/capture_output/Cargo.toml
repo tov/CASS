@@ -1,0 +1,8 @@
+[package]
+name = "capture_output"
+version = "0.1.0"
+authors = ["Jesse A. Tov <jesse.tov@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+tokio = { version = "1.5.0", features = ["full"] }
