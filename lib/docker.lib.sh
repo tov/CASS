@@ -1,7 +1,7 @@
 # Start, use, and stop docker.
 
 docker_time_limit=600
-docker_memory_limit=16m
+docker_memory_limit=128m
 
 docker_lib_on_exit () {
     for hash in $docker_kill_on_exit_list; do
