@@ -30,6 +30,7 @@ help () {
 	-R            don't re-resolve NetID
 	-u            upload results to server / save starter-tests
 	-T            don't actually run tests
+	-t            force retest
 	-w            wipe out previous build
 	-x            shell trace
 
@@ -86,7 +87,7 @@ process_flags_set_variables () {
         exit
     fi
 
-    eval "$(getargs -ABbCcdghikNnqpRuTwx hw netid evals=)"
+    eval "$(getargs -ABbCcdghikNnqpRuTtwx hw netid evals=)"
 
     if [ -n "$flag_x" ]; then
         set -x
@@ -283,6 +284,11 @@ run_tests () {
     $test_step || return 0
 
     doing 'Testing project'
+
+    if [ -n "$flag_t" ]; then
+        rm_log early
+        rm_log tests
+    fi
 
     if [ -n "$NO_POINTS_MODE" ]; then
         rm_log tests
