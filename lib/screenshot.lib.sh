@@ -21,11 +21,12 @@ screenshot_program () {
 
     png=$1-screenshot.png
     points=0
-    HTML_DETAILS_OPEN=1 \
-    program_test $1 \
+
+    HTML_DETAILS_OPEN=1 program_test $1 \
         -m="Trying to start your <code class='filename'>$1</code>." \
         -x "/usr/local/bin/x_test.sh /hw/build/$1 /out/$png" \
         -c 0
+    unset HTML_DETAILS_OPEN
 
     if [ -f "out/$png" ]; then
         url=/gsc/files/$TEST_NETID/$TEST_HW/$png
