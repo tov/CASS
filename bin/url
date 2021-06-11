@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# Prints or opens the GSC url for the identified student(s)
+#
+#   -1   require a unique NetID result
+#   -o   opens the URL instead of printing it
+#
+
+
+. "$(dirname "$0")/.CASS"
+
+eval "$(getargs -o1 ...)"
+
+if [ -n "$flag_o" ]; then
+    : ${BROWSER:?no browser set}
+    go () {
+        $BROWSER "$1"
+    }
+else
+    go () {
+        echo "$1"
+    }
+fi
+
+for regexp
+do
+    find_student -q $flag_1 "$regexp"
+done | while read netid
+do
+    go "$gsc_base/~$netid"
+done
