@@ -72,7 +72,7 @@ alias upload='set -- "$@"'
 
 do_it () {
 
-    gsc_rm hw$hw:\*.log hw$hw:\*.hlog
+    gsc_rm hw$hw:'[a-z]*.log' hw$hw:'[a-z]*.hlog'
 
     for file in *; do
         case "$file" in
@@ -125,6 +125,8 @@ update_about () {
 generate_log_legend () {
     echo "$CHECK_THESE"
     echo
+    describe_log 'a link to play your game' \
+        0play.hlog
     describe_log 'the output from building your code' \
         build.log
     describe_log 'errors that have prevented me from testing your code' \
