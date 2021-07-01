@@ -161,7 +161,7 @@ getargs () (
         shift
     done
 
-    ARGS=$(printf %s "$*" | tr a-z A-Z)
+    ARGS=$(puts "$*" | tr a-z A-Z)
     if [ -n "${cmd-}" ]; then
         cmd_usage="Usage: $cmd${flags:+ -$flags} $ARGS"
     else
@@ -280,7 +280,7 @@ explode_words () {
 dump_args () {
     local i
     for i in "$@"; do
-        printf ' • ‘%s’\n' "$i"
+        puts " • ‘${i}’\n"
     done
 }
 
@@ -318,8 +318,8 @@ find_single () {
     local description="${1?description}"; shift
 
     if [ -z "${1-}" ] || [ -n "${2-}" ]; then
-        printf "Cannot resolve %s\n" "$description" >&4
-        printf "Candidates were: %s\n" "$*" | fmt   >&4
+        echo>&4 "Cannot resolve $description"
+        echo>&4 "Candidates were: %*" | fmt
         exit 2
     fi
 
@@ -348,63 +348,56 @@ whitespace_for_find_student=$(printf '\r\n\t ')
 
 # Finds student matching "$regexp"
 find_student () {
-    local arg
-    local netid
-    local regexp
+    local print_info='print_student_info -n'
+    local flag_quiet=false
+    local flag_unique=false
 
-    arg=$1
-    while [ -n "$arg" ]; do
-        case "$arg" in
-            -q)
-                flag_q=1
-                shift; arg=$1
-                ;;
-            -1)
-                flag_1=1
-                shift; arg=$1
-                ;;
-            -q*)
-                flag_q=1
-                arg=-${arg#-q}
-                ;;
-            -1*)
-                flag_1=1
-                arg=-${arg#-1}
-                ;;
-            *)
-                break
-                ;;
+    OPTIND=1
+    local opt
+    while getopts q1 opt; do
+        case $opt in
+            q) flag_quiet=true;;
+            1) flag_unique=true;;
         esac
     done
+    shift $((OPTIND - 1))
+    OPTIND=1
 
-    regexp=$1
+    local regexp=$1
 
-    if ! netid=$(find_netid "$regexp" 4>/dev/null); then
+    local netid
+    if ! netid=$(find_netid "$regexp" 4>/dev/null)
+    then
         netid=$(find_netids_by_info "$regexp" 4>/dev/null) || true
 
-        if [ -n "$flag_1" ]; then
-            case "$netid" in
+        if $flag_unique
+        then
+            case $netid in
                 '')
-                    printf 'No match for ‘%s’.\n' "$regexp"
+                    echo>&4 "No match for ‘${regexp}’."
                     return 1
                 ;;
+
                 *[$whitespace_for_find_student]?*)
-                    printf 'No unique match for ‘%s’. Candidates:\n' "$regexp"
-                    for netid in $netid; do
-                        print_student_info -n $netid | sed 's/^/ - /'
-                    done
+                    echo>&4 "No unique match for ‘${regexp}’. Candidates:"
+                    for netid in $netid
+                    do
+                        $print_info $netid
+                    done | cat>&4 -n
                     return 2
                 ;;
             esac
-        fi >&4
+        fi
     fi
 
-    for netid in $netid; do
-        if [ -n "$flag_q" ]; then
-            printf '%s\n' $netid
-        else
-            print_student_info -n $netid
-        fi
+    if $flag_quiet
+    then
+        print_info=echo
+    fi
+
+    for netid in $netid
+    do
+        $print_info $netid
     done
 }
 
@@ -437,15 +430,72 @@ print_student_property () {
 }
 
 print_student_info () {
-    if [ "$1" = -n ]; then
+    local flag_n
+    local netid
+    local pinned
+
+    if [ "$1" = -n ]
+    then
+        flag_n=true
         shift
-        printf '%-10s ' "$1"
+    else
+        flag_n=false
     fi
 
-    printf '%s %s <%s>\n' \
-        "$(print_student_property "$1" first)" \
-        "$(print_student_property "$1" last)" \
-        "$(print_student_property "$1" email)"
+    for netid
+    do
+        if [ -e "$COURSE_ROSTER"/$netid/.PIN ]
+        then pinned="$(tput_wrap 'setaf 1' printf '#PIN')"
+        else pinned=
+        fi
+
+        if test $netid = teststudent
+        then
+            pinned=
+            if $flag_n
+            then
+                tput_wrap 'setaf 2' printf 'teststudent '
+            fi
+        elif $flag_n
+        then
+            printf '%-7s %s' "$netid" "${pinned:-    }"
+        fi
+
+        printf '  %s %s <%s>\n' \
+            "$(print_student_property "$1" first)" \
+            "$(print_student_property "$1" last)" \
+            "$(print_student_property "$1" email)"
+    done
+}
+
+tput_wrap () {
+    local before=
+    local after=
+    local color=$1; shift
+
+    if tty -s
+    then
+        case $color in
+            (*/=)
+                before=$(tput ${color%/=})
+                ;;
+            (*/*)
+                before=$(tput ${color%%;*})
+                after=$(tput ${color#*;})
+                ;;
+            (*)
+                before=$(tput $color)
+                after=$(tput sgr0)
+        esac
+    fi
+
+    puts "$before"
+    "$@"
+    puts "$after"
+}
+
+puts () {
+    printf %s "$*"
 }
 
 # This code may be dead.
@@ -474,7 +524,7 @@ show_progress () {
     local message; message=$1; shift
     local result
 
-    printf '%s...' "$message"
+    puts "$message..."
     "$@" >/dev/null
     result=$?
 
@@ -526,7 +576,7 @@ list_submitters () {
 }
 
 get_line_indent () {
-    printf '%s' "$1" | expand | sed 's/[^ ].*//' | tr -d '\n'
+    puts "$1" | expand | sed 's/[^ ].*//' | tr -d '\n'
 }
 
 unindent () {
@@ -539,25 +589,25 @@ unindent () {
     local indent
 
     while line=$(head -1); do
-        if [ -n "$(printf %s "$line" | tr -d ' \n\t')" ]; then
+        if [ -n "$(puts "$line" | tr -d ' \n\t')" ]; then
             indent=$(get_line_indent "$line")
             break
         else
-            printf '\n'
+            echo
         fi
     done
 
     {
-        printf '%s\n' "$line"
+        puts "$line"
         cat
     } | expand | ubsed -E "s/^${indent}//;$1"
 }
 
 pluralize () {
     if [ "$1" = 1 ]; then
-        printf %s "$2"
+        puts "$2"
     else
-        printf %s "${3-${2}s}"
+        puts "${3-${2}s}"
     fi
 }
 
@@ -568,9 +618,9 @@ short_prog_name () {
     if [ "$COURSE_BIN/$base" = "$full" ] ||
        [ "$(which "$base" 2>/dev/null)" = "$full" ];
     then
-        printf %s "$base"
+        puts "$base"
     else
-        printf %s "$full"
+        puts "$full"
     fi
 }
 
