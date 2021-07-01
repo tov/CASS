@@ -6,7 +6,7 @@
 # -c          clean build products from previous run
 
 . "$(dirname "$0")/.CASS"
-course_use find grade
+course_use find grade redact
 
 process_args () {
     eval "$(getargs -Rc hw netid repo=)"
@@ -48,56 +48,6 @@ main () {
 
 guest () {
     docker exec $CURRENT_BUILD_CONTAINER "$@"
-}
-
-c_contract () {
-    {
-        "$@" |
-        ubsed -E '
-            /^make\[[0-9]+\]: (Entering|Leaving) directory /d
-            /^ln /d
-            s| +-f[^ ]*||g
-            s| +-[DI][^ ]*| ${CPPFLAGS}|
-            s| +-[Ll][^ ]*| ${LDFLAGS}|
-            s| +-[gpsW][^ ]*| ${CFLAGS}|
-            s| +@[^ ]+||g
-            s| +-[^co][^ ]*||g
-        '
-    } 2>&1 | ubsed -E '
-        s|[^ ]*[.]tester|${TEST_DIR}|g
-        s|tester|${MY_TESTS}|g
-        s|docker exec .* cc |${CC} |g
-        s|docker exec .* c[+][+] |${CXX} |g
-    '
-}
-
-c_expand () {
-    sed '
-        s|^/hw/||
-        s|[$]{TEST_DIR}|.tester|g
-        s|[$]{MY_TESTS}|tester|g
-    ' "$1"
-}
-
-cxx_contract () {
-    c_contract "$@"
-}
-
-cxx_expand () {
-    c_expand "$@"
-}
-
-dssl2_contract () {
-    "$@" | ubsed -E '
-               /^make\[[0-9]+\]: (Entering|Leaving) directory /d
-               s@ [0-9]>&[0-9]@@
-               s@/home/tov/cs214/var/grading[^/]*/@@
-               s@[.]tester@${TEST_DIR}@g
-           '
-}
-
-dssl2_expand () {
-    cat "$1"
 }
 
 save_warnings () {
