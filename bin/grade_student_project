@@ -21,6 +21,7 @@ help () {
 	-C            don't re-clone repo
 	-c            clean build products from previous run
 	-d            die on first failed test
+	-e            build Web Assembly using Emscripten
 	-i            prepare local docker image
 	-g            grant automatic extensions
 	-h            print this help message
@@ -39,6 +40,7 @@ help () {
 
 main () {
     build_step=false
+    em_build_step=false
     docker_step=false
     test_step=false
     extensions_step=false
@@ -50,16 +52,26 @@ main () {
     grading_start=$(current_millis)
 
     prepare_local_repo
-    configure_and_build
-    prepare_docker_image
-    run_tests
-    grant_extensions
-    upload_or_save
+
+    when $build_step       configure_and_build Building native
+    when $em_build_step    configure_and_build Building web
+    when $docker_step      prepare_docker_image
+    when $test_step        run_tests
+    when $extensions_step  grant_extensions
+    when $upload_step      upload_or_save
 
     announce 'Finished %s: %s (%s).' \
         $slug "$(summarize_result)" \
         "$(elapsed_since $grading_start)"
     msgf '\n'
+}
+
+when () {
+    if $1
+    then
+        shift
+        "$@"
+    fi
 }
 
 summarize_result () {
@@ -87,7 +99,7 @@ process_flags_set_variables () {
         exit
     fi
 
-    eval "$(getargs -ABbCcdghikNnqpRuTtwx hw netid evals=)"
+    eval "$(getargs -ABbCcdeghikNnqpRuTtwx hw netid evals=)"
 
     if [ -n "$flag_x" ]; then
         set -x
@@ -103,6 +115,10 @@ process_flags_set_variables () {
 
     if [ -z "$flag_B" ]; then
         build_step=true
+    fi
+
+    if [ -n "$flag_e" ]; then
+        em_build_step=true
     fi
 
     if [ -n "$flag_i$flag_p" ]; then
@@ -174,40 +190,52 @@ you_submitted_the_starter () {
 }
 
 print_build_error () {
-    cat <<-\....EOF
+    cat <<-....EOF
 	<h4>Build Error</h4>
 
 	<p>I couldn't build your code for some reason, so I'm skipping
 	running the tests for now.</p>
 
-	<p>Here's your <code class="filename">build.log</code>:</p>
+	<p>Here's your <code class="filename">$1.log</code>:</p>
 
 ....EOF
 
-    html_grep_output ' error: ' < build.log
+    html_grep_output ' error: ' < $1.log
 }
 
 generate_build_error () {
-    print_build_error | capture_test_results error >&2
+    print_build_error ${1-}build |
+        capture_test_results ${1-}error >&2
 }
 
 configure_and_build () {
-    $build_step || return 0
+    local target=${2:-native}
+    local tag=$(target_build_tag $target)
 
-    doing "${1:-Building project}"
+    doing "${1:-Building} $target project"
 
-    if build_project; then
-        rm_log error
+    if build_project ${tag}build; then
+        rm_log ${tag}error
         did
     else
-        docker_step=false
-        test_step=false
-        rm_log early
-        rm_log tests
-        hilite generate_build_error
-        did 'build error'
-        disposition='build error'
+        if [ $target = native ]
+        then
+            rm_log early
+            rm_log tests
+            docker_step=false
+            em_build_step=false
+            test_step=false
+            disposition='build error'
+        fi
+        hilite generate_build_error $tag
+        did "$disposition"
     fi
+}
+
+target_build_tag () {
+    case $1 in
+        web) echo em- ;;
+    esac
 }
 
 check_for_starter_code () {
@@ -218,6 +246,7 @@ check_for_starter_code () {
     if looks_like_starter; then
         hilite you_submitted_the_starter
         build_step=false
+        em_build_step=false
         docker_step=false
         test_step=false
         disposition='starter'
@@ -235,8 +264,6 @@ generate_diff () {
 }
 
 prepare_docker_image () {
-    $docker_step || return 0
-
     if ! needs_docker_image; then
         doing 'Preparing docker image'
         did skipped
@@ -276,13 +303,12 @@ test_project () {
 }
 
 build_project () {
-    test -z "$flag_c" || rm -f build.log
-    host_make build.log BUILD_OPT=$flag_c
+    local log=${1:-build}.log
+    test -z "$flag_c" || rm -f "$log"
+    host_make "$log" BUILD_OPT=$flag_c
 }
 
 run_tests () {
-    $test_step || return 0
-
     doing 'Testing project'
 
     if [ -n "$flag_t" ]; then
@@ -298,7 +324,7 @@ run_tests () {
         if needs_full_test; then
             did 'complete; needs full test'
             NO_POINTS_MODE=
-            configure_and_build 'Rebuilding project'
+            configure_and_build Rebuilding
             doing 'Retesting project'
         else
             did
@@ -367,6 +393,7 @@ check_submission_exists () {
     else
         disposition='no submission'
         build_step=false
+        em_build_step=false
         docker_step=false
         test_step=false
         upload_step=false
@@ -393,8 +420,6 @@ get_checks_passed () {
 }
 
 grant_extensions () {
-    $extensions_step || return 0
-
     rm -f extension.log
     host_make extension.log GRANT_OPT=-U
 }
@@ -404,8 +429,6 @@ post_grade () {
 }
 
 upload_or_save () {
-    $upload_step || return 0
-
     if $starter; then
         mkdir -p "$log_dir"
         rsync --ignore-missing-args \

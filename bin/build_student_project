@@ -4,12 +4,13 @@
 #
 # -R          don't resolve netid
 # -c          clean build products from previous run
+# -e          build Web Assembly using Emscripten
 
 . "$(dirname "$0")/.CASS"
 course_use find grade redact
 
 process_args () {
-    eval "$(getargs -Rc hw netid repo=)"
+    eval "$(getargs -Rce hw netid repo=)"
     netid=$(resolve_student ${flag_R:+-C} $netid)
     if [ -z "$repo" ]; then
         repo=$(find_team_repo $hw $netid)
@@ -28,9 +29,9 @@ main () {
     cd "$repo"
     lang=$(detect_language)
 
-    rm -f build.log
+    rm -f build.log em-build.log
 
-    case $lang in
+    case $lang$flag_e in
         (dssl2)
             touch build.log
             ;;
@@ -39,11 +40,11 @@ main () {
             cat build.log >&2
             docker_start build "$container"
             ;;
+        (*-e)
+            ;;
     esac
 
-    clean_build
     do_build
-    test -f .success
 }
 
 guest () {
@@ -70,18 +71,67 @@ restore_warnings () {
 }
 
 do_build () {
-    restore_warnings .warnings
-    ${lang}_contract $HOST_MAKE | tee -a build.log
-    save_warnings build.log .warnings
+    if [ -n "$flag_e" ]
+    then
+        do_web_build
+    else
+        do_native_build
+    fi
 }
 
-clean_build () {
+do_native_build () {
+    clean_native_build
+    restore_warnings .warnings
+    ${lang}_redact $HOST_MAKE | tee -a build.log
+    save_warnings build.log .warnings
+    test -f .success
+}
+
+do_web_build () {
+    clean_web_build
+
+    local prefix=${EM_PREFIX:-/usr/local/asmjs-unknown-emscripten}
+    local ge211=${GE211_DIR:-$prefix/src/dot-cs211/lib/ge211}
+    local script=$ge211/scripts/emscripten_build.zsh
+
+    rm -f 0play.hlog
+
+    if TAG= cxx_redact "$script" -O2 | tee em-build.log
+    then
+        chmod -R a+rX build.em/html
+        chmod a+x build.em . .. ../..
+
+        rm -Rf play
+        ln -sf build.em/html play
+
+        sed 's/^ *|\?//' >0play.hlog <<........EOF
+            <p class="html-only"
+           |   style="font-size: 150%; margin: 4px auto; padding: 4px;
+           |          text-align: center; color: white; background: black;">
+           |  <a href="/gsc/play/$netid/$hw/">Play the game online</a>
+            </p>
+........EOF
+
+    fi
+
+    true
+}
+
+clean_native_build () {
     test -n "$flag_c" || return 0
 
     if [ -f CMakeLists.txt -a -d build ]; then
         guest cmake --build build --target clean
     else
         $HOST_MAKE clean
+    fi
+}
+
+clean_web_build () {
+    test -n "$flag_c" || return 0
+
+    if [ -n "$flag_e" ]; then
+        rm -Rf build.em
     fi
 }
 

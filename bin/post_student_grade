@@ -136,6 +136,10 @@ generate_log_legend () {
     describe_log 'whether you were granted an automatic extension' \
         +' based on your current score' \
         extension.log
+    describe_log 'the output from compiling your code to Web Assembly' \
+        em-build.log
+    describe_log 'errors preventing your code from compiling to Web Assembly' \
+        em-error.log
 }
 
 describe_log () {
