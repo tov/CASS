@@ -9,7 +9,7 @@
         "debug": "^4.1.1",
         "form-urlencoded": "^4.2.1",
         "node-fetch": "^2.6.1",
-        "parse-link-header": "^1.0.1",
+        "parse-link-header": "^2.0.0",
         "yargs": "^16.0.3"
     }
 }
